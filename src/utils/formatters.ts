@@ -1,0 +1,96 @@
+// Formato estándar de Pesos Dominicanos (RD$ 1,250.00)
+export function formatearMonedaRD(monto: number): string {
+  return new Intl.NumberFormat('es-DO', {
+    style: 'currency',
+    currency: 'DOP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(monto).replace('DOP', 'RD$');
+}
+
+// Obtener fecha de hoy en formato YYYY-MM-DD local
+export function getFechaHoyLocal(): string {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+// Obtener hora actual en formato HH:mm local
+export function getHoraActual(): string {
+  const d = new Date();
+  const h = String(d.getHours()).padStart(2, '0');
+  const m = String(d.getMinutes()).padStart(2, '0');
+  return `${h}:${m}`;
+}
+
+// Formatear fecha para lectura humana (ej: "Viernes, 9 de Octubre")
+export function formatearFechaHumana(fechaStr: string): string {
+  if (!fechaStr || typeof fechaStr !== 'string') return '';
+  const parts = fechaStr.split('-').map(Number);
+  if (parts.length < 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) {
+    return fechaStr;
+  }
+  const [year, month, day] = parts;
+  const d = new Date(year, month - 1, day);
+  return d.toLocaleDateString('es-DO', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  });
+}
+
+// Formatear hora de 24h a 12h con AM/PM (ej: "14:30" -> "2:30 PM")
+export function formatearHora12(hora24: string): string {
+  if (!hora24 || typeof hora24 !== 'string') return '';
+  const parts = hora24.split(':');
+  if (parts.length < 2) return hora24;
+  const [hStr, mStr] = parts;
+  let h = parseInt(hStr, 10);
+  if (isNaN(h)) return hora24;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12;
+  if (h === 0) h = 12;
+  return `${h}:${mStr} ${ampm}`;
+}
+
+// Convertir hora "HH:mm" a minutos totales del día
+export function horaAMinutos(hora24: string): number {
+  if (!hora24) return 0;
+  const [h, m] = hora24.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+}
+
+// Sumar minutos a una hora y devolver "HH:mm"
+export function sumarMinutosAHora(hora24: string, minutos: number): string {
+  const totalMin = horaAMinutos(hora24) + minutos;
+  const h = Math.floor(totalMin / 60) % 24;
+  const m = totalMin % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+// Detectar si dos rangos de horas se solapan
+export function haySolapamiento(
+  horaInicioA: string,
+  duracionA: number,
+  horaInicioB: string,
+  duracionB: number
+): boolean {
+  const iniA = horaAMinutos(horaInicioA);
+  const finA = iniA + duracionA;
+  const iniB = horaAMinutos(horaInicioB);
+  const finB = iniB + duracionB;
+
+  return iniA < finB && finA > iniB;
+}
+
+// Generar mensaje para abrir WhatsApp
+export function generarEnlaceWhatsApp(telefono: string, clienteNombre: string, servicioNombre: string, hora: string): string {
+  const cleanPhone = telefono.replace(/\D/g, '');
+  const hora12 = formatearHora12(hora);
+  const mensaje = encodeURIComponent(
+    `¡Hola ${clienteNombre}! 👋 Te recordamos tu cita de *${servicioNombre}* para hoy a las *${hora12}* en la barbería. 💈 ¡Te esperamos!`
+  );
+  return `https://wa.me/${cleanPhone.length === 10 ? '1' + cleanPhone : cleanPhone}?text=${mensaje}`;
+}

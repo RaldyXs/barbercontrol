@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#92400e"/>
+      <stop offset="100%" stop-color="#451a03"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Rounded Square -->
+  <rect width="512" height="512" rx="128" fill="url(#bg)"/>
+  
+  <!-- Barber Pole & Scissors Motif -->
+  <g transform="translate(106, 106) scale(0.585)" fill="none" stroke="#ffffff" stroke-width="24" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Barber Pole Capsule -->
+    <rect x="156" y="60" width="200" height="392" rx="100" fill="#ffffff" stroke="#fef3c7" stroke-width="16"/>
+    <!-- Stripes Clip Path -->
+    <clipPath id="poleClip">
+      <rect x="156" y="60" width="200" height="392" rx="100"/>
+    </clipPath>
+    <g clip-path="url(#poleClip)">
+      <!-- Red stripe -->
+      <path d="M 80,120 L 400,240 L 400,300 L 80,180 Z" fill="#dc2626"/>
+      <!-- Blue stripe -->
+      <path d="M 80,240 L 400,360 L 400,420 L 80,300 Z" fill="#2563eb"/>
+      <!-- Red stripe 2 -->
+      <path d="M 80,360 L 400,480 L 400,540 L 80,420 Z" fill="#dc2626"/>
+    </g>
+    <!-- Cap and base -->
+    <rect x="140" y="44" width="232" height="28" rx="14" fill="#f59e0b" stroke="#d97706" stroke-width="8"/>
+    <rect x="140" y="440" width="232" height="28" rx="14" fill="#f59e0b" stroke="#d97706" stroke-width="8"/>
+  </g>
+</svg>
