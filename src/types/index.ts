@@ -66,3 +66,54 @@ export interface ResumenCaja {
     subtotalRD: number;
   }[];
 }
+
+/* =======================================================================
+ * INTERFACE SEGREGATION PRINCIPLE (ISP)
+ * Contratos segregados y específicos por área de responsabilidad.
+ * ======================================================================= */
+
+export interface ICitasOperations {
+  citas: Cita[];
+  cambiarEstadoCita: (citaId: string, nuevoEstado: EstadoCita) => void;
+  agregarCita: (nuevaCita: Omit<Cita, 'id' | 'creadoEn'>) => void;
+  reprogramarCita: (citaId: string, nuevaFecha: string, nuevaHora: string) => void;
+  eliminarCita: (citaId: string) => void;
+}
+
+export interface IServiciosOperations {
+  servicios: Servicio[];
+  agregarServicio: (servicio: Omit<Servicio, 'id'>) => void;
+  actualizarServicio: (servicio: Servicio) => void;
+  eliminarServicio: (servicioId: string) => void;
+}
+
+export interface IFiadosOperations {
+  fiados: Fiado[];
+  agregarFiado: (fiado: Omit<Fiado, 'id'>) => void;
+  toggleSaldarFiado: (fiadoId: string) => void;
+  eliminarFiado: (fiadoId: string) => void;
+}
+
+export interface ICajaAnalytics {
+  getResumenCaja: (fecha?: string) => ResumenCaja;
+}
+
+export interface INavegacionState {
+  vistaActiva: VistaActiva;
+  fechaSeleccionada: string;
+  setVistaActiva: (vista: VistaActiva) => void;
+  setFechaSeleccionada: (fecha: string) => void;
+}
+
+export interface AgendaContextType
+  extends ICitasOperations,
+    IServiciosOperations,
+    IFiadosOperations,
+    ICajaAnalytics,
+    INavegacionState {
+  clientesFrecuentes: ClienteFrecuente[];
+  cargandoServidor: boolean;
+  guardandoServidor: boolean;
+  exportarRespaldoJSON: () => void;
+  importarRespaldoJSON: (contenidoJSON: string) => boolean;
+}

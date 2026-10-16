@@ -18,7 +18,6 @@ export const ServiciosView: React.FC = () => {
     agregarServicio,
     actualizarServicio,
     eliminarServicio,
-    restablecerDatosDemo,
   } = useAgenda();
 
   const [modalAbierto, setModalAbierto] = useState(false);
@@ -158,19 +157,7 @@ export const ServiciosView: React.FC = () => {
           </span>
         </div>
 
-        <div className="border-t border-stone-100 pt-2 flex items-center justify-between text-xs text-zinc-400">
-          <span>¿Restablecer tarifas y citas demo?</span>
-          <button
-            onClick={() => {
-              if (confirm('¿Restablecer datos de demostración?')) {
-                restablecerDatosDemo();
-              }
-            }}
-            className="text-amber-800 hover:underline font-semibold cursor-pointer"
-          >
-            Restablecer Demo
-          </button>
-        </div>
+
       </div>
 
       {/* Modal Crear / Editar Servicio */}
