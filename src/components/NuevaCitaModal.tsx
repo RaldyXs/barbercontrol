@@ -165,10 +165,15 @@ export const NuevaCitaModal: React.FC<NuevaCitaModalProps> = ({
   const duracionesBloqueo = [15, 30, 45, 60, 90, 120];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[92vh] overflow-y-auto shadow-2xl p-5 text-zinc-900 font-sans">
-        {/* Cabecera del Modal */}
-        <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm overflow-hidden"
+    >
+      <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full max-h-[88dvh] overflow-y-auto overscroll-contain shadow-2xl p-4 sm:p-5 text-zinc-900 font-sans relative flex flex-col">
+        {/* Cabecera Sticky del Modal (Siempre visible aunque se desplace o abra el teclado) */}
+        <div className="sticky top-0 bg-white z-30 pb-3 border-b border-stone-100 flex items-center justify-between -mt-1 pt-1">
           <div>
             <h2 className="text-base font-bold text-zinc-900">
               {tipoRegistro === 'cita' ? 'Agendar Turno' : 'Bloquear Horario Personal'}
@@ -180,8 +185,10 @@ export const NuevaCitaModal: React.FC<NuevaCitaModalProps> = ({
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1 text-zinc-400 hover:text-zinc-700 transition-colors cursor-pointer"
+            className="p-2 bg-stone-100 hover:bg-stone-200 text-zinc-500 hover:text-zinc-800 rounded-full transition-colors cursor-pointer"
+            title="Cerrar ventana"
           >
             <X className="w-5 h-5" />
           </button>
@@ -246,7 +253,6 @@ export const NuevaCitaModal: React.FC<NuevaCitaModalProps> = ({
                 <input
                   type="text"
                   required
-                  autoFocus
                   placeholder="Ej. Juan Pérez"
                   value={clienteNombre}
                   onChange={(e) => {
@@ -254,6 +260,10 @@ export const NuevaCitaModal: React.FC<NuevaCitaModalProps> = ({
                     setMostrarSugerencias(true);
                   }}
                   onFocus={() => setMostrarSugerencias(true)}
+                  onBlur={() => {
+                    setTimeout(() => setMostrarSugerencias(false), 200);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
                   className="w-full bg-stone-50 border border-stone-200 focus:border-amber-800 rounded-xl px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 outline-none font-medium"
                 />
 
@@ -461,21 +471,29 @@ export const NuevaCitaModal: React.FC<NuevaCitaModalProps> = ({
               placeholder="Detalle o recordatorio..."
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
+              onBlur={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
               className="w-full bg-stone-50 border border-stone-200 focus:border-amber-800 rounded-xl px-3 py-2 text-xs text-zinc-900 placeholder-zinc-400 outline-none"
             />
           </div>
 
-          {/* Botón de Enviar */}
-          <div className="pt-2">
+          {/* Botones de Acción: Cancelar y Confirmar */}
+          <div className="pt-3 pb-2 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="py-3 px-4 rounded-xl border border-stone-200 text-zinc-700 font-bold text-xs hover:bg-stone-50 transition-colors cursor-pointer bg-white"
+            >
+              Cancelar
+            </button>
             <button
               type="submit"
-              className="w-full bg-amber-800 hover:bg-amber-900 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+              className="flex-1 bg-amber-800 hover:bg-amber-900 active:scale-98 text-white font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer text-xs"
             >
               <Check className="w-4 h-4" />
               <span>
                 {tipoRegistro === 'cita'
-                  ? `Confirmar Cita • ${formatearMonedaRD(servicioSeleccionado?.precioRD || 400)}`
-                  : `Guardar Bloqueo de ${duracionBloqueo} min`}
+                  ? `Confirmar • ${formatearMonedaRD(servicioSeleccionado?.precioRD || 400)}`
+                  : `Guardar Bloqueo (${duracionBloqueo}m)`}
               </span>
             </button>
           </div>

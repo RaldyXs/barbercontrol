@@ -105,6 +105,28 @@ export const AgendaProvider: React.FC<AgendaProviderProps> = ({
     return () => clearTimeout(timer);
   }, [citas, servicios, fiados]);
 
+  // Re-sincronización automática al volver a la app o reconectarse a internet
+  useEffect(() => {
+    const sincronizarSeguro = () => {
+      if (inicializado.current && (citas.length > 0 || fiados.length > 0)) {
+        persistirDatos(citas, servicios, fiados);
+      }
+    };
+
+    window.addEventListener('online', sincronizarSeguro);
+    const handleVis = () => {
+      if (document.visibilityState === 'visible') {
+        sincronizarSeguro();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVis);
+
+    return () => {
+      window.removeEventListener('online', sincronizarSeguro);
+      document.removeEventListener('visibilitychange', handleVis);
+    };
+  }, [citas, servicios, fiados]);
+
   // SRP: Delegar análisis de clientes frecuentes a ClienteService
   const clientesFrecuentes = useMemo(() => {
     return ClienteService.derivarClientesFrecuentes(citas);
