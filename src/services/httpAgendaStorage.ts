@@ -142,7 +142,7 @@ export class HttpAgendaStorage implements IAgendaStorage {
     } else {
       try {
         if (typeof window !== 'undefined' && window.localStorage) {
-          window.removeItem(PENDING_SYNC_KEY);
+          window.localStorage.removeItem(PENDING_SYNC_KEY);
         }
       } catch (_) {}
     }
