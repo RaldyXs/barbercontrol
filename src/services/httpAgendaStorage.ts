@@ -66,6 +66,17 @@ export class HttpAgendaStorage implements IAgendaStorage {
       if (resp.ok) {
         const serverData = await resp.json();
 
+        // Si el servidor respondió que está vacío (nuevo contenedor)
+        if (serverData && serverData.empty) {
+          if (localData && (localData.citas.length > 0 || localData.fiados.length > 0)) {
+            console.log(
+              '[HttpAgendaStorage] Servidor vacío detectado. Restaurando datos protegidos del teléfono...'
+            );
+            this.guardarEnServidor(localData).catch(() => {});
+            return localData;
+          }
+        }
+
         // Si el servidor respondió con datos
         if (serverData && !serverData.empty) {
           const serverCitas: Cita[] = Array.isArray(serverData.citas) ? serverData.citas : [];
