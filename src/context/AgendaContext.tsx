@@ -105,27 +105,41 @@ export const AgendaProvider: React.FC<AgendaProviderProps> = ({
     return () => clearTimeout(timer);
   }, [citas, servicios, fiados]);
 
-  // Re-sincronización automática al volver a la app o reconectarse a internet
+  // Re-sincronización automática bidireccional al volver a la app o reconectarse a internet
   useEffect(() => {
-    const sincronizarSeguro = () => {
-      if (inicializado.current && (citas.length > 0 || fiados.length > 0)) {
-        persistirDatos(citas, servicios, fiados);
+    let montado = true;
+    const reSincronizar = async () => {
+      if (!inicializado.current) return;
+      try {
+        const data = await storage.cargar();
+        if (montado && data) {
+          if (Array.isArray(data.citas)) setCitas(data.citas);
+          if (Array.isArray(data.fiados)) setFiados(data.fiados);
+          if (Array.isArray(data.servicios) && data.servicios.length > 0) {
+            setServicios(data.servicios);
+          }
+        }
+      } catch (err) {
+        console.warn('[AgendaContext] Error en re-sincronización pasiva:', err);
       }
     };
 
-    window.addEventListener('online', sincronizarSeguro);
+    window.addEventListener('online', reSincronizar);
+    window.addEventListener('focus', reSincronizar);
     const handleVis = () => {
       if (document.visibilityState === 'visible') {
-        sincronizarSeguro();
+        reSincronizar();
       }
     };
     document.addEventListener('visibilitychange', handleVis);
 
     return () => {
-      window.removeEventListener('online', sincronizarSeguro);
+      montado = false;
+      window.removeEventListener('online', reSincronizar);
+      window.removeEventListener('focus', reSincronizar);
       document.removeEventListener('visibilitychange', handleVis);
     };
-  }, [citas, servicios, fiados]);
+  }, [storage]);
 
   // SRP: Delegar análisis de clientes frecuentes a ClienteService
   const clientesFrecuentes = useMemo(() => {

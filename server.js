@@ -46,6 +46,11 @@ const server = http.createServer((req, res) => {
 
   // ENDPOINT DE API: /api/agenda (Persistencia automática del barbero)
   if (urlPath === '/api/agenda') {
+    // Evitar que Safari o cualquier proxy cachee las respuestas de la API
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     if (req.method === 'GET') {
       res.setHeader('Content-Type', 'application/json');
       if (fs.existsSync(DB_FILE)) {
@@ -70,8 +75,68 @@ const server = http.createServer((req, res) => {
       });
       req.on('end', () => {
         try {
-          const parsed = JSON.parse(body);
-          fs.writeFileSync(DB_FILE, JSON.stringify(parsed, null, 2), 'utf-8');
+          const incoming = JSON.parse(body);
+
+          // Fusión atómica segura en servidor: sincroniza acceso directo y web sin sobreescribir
+          let finalData = incoming;
+          if (fs.existsSync(DB_FILE)) {
+            try {
+              const existingRaw = fs.readFileSync(DB_FILE, 'utf-8');
+              const existing = JSON.parse(existingRaw);
+              if (existing && !existing.empty) {
+                // Combinar listas de eliminadas (tombstones)
+                const eliminadasSet = new Set([
+                  ...(Array.isArray(existing.citasEliminadas) ? existing.citasEliminadas : []),
+                  ...(Array.isArray(incoming.citasEliminadas) ? incoming.citasEliminadas : []),
+                ]);
+
+                // Mapa unificado de citas por ID
+                const citasMap = new Map();
+                (Array.isArray(existing.citas) ? existing.citas : []).forEach((c) => {
+                  if (c && c.id && !eliminadasSet.has(c.id)) {
+                    citasMap.set(c.id, c);
+                  }
+                });
+                (Array.isArray(incoming.citas) ? incoming.citas : []).forEach((c) => {
+                  if (c && c.id && !eliminadasSet.has(c.id)) {
+                    if (!citasMap.has(c.id)) {
+                      citasMap.set(c.id, c);
+                    } else {
+                      const prev = citasMap.get(c.id);
+                      const timePrev = prev?.creadoEn ? Date.parse(prev.creadoEn) : 0;
+                      const timeInc = c.creadoEn ? Date.parse(c.creadoEn) : 0;
+                      citasMap.set(c.id, timeInc >= timePrev ? c : prev);
+                    }
+                  }
+                });
+
+                // Mapa unificado de fiados por ID
+                const fiadosMap = new Map();
+                (Array.isArray(existing.fiados) ? existing.fiados : []).forEach((f) => {
+                  if (f && f.id) fiadosMap.set(f.id, f);
+                });
+                (Array.isArray(incoming.fiados) ? incoming.fiados : []).forEach((f) => {
+                  if (f && f.id) fiadosMap.set(f.id, f);
+                });
+
+                finalData = {
+                  version: incoming.version || existing.version || '1.0',
+                  fechaRespaldo: new Date().toISOString(),
+                  citas: Array.from(citasMap.values()),
+                  servicios:
+                    Array.isArray(incoming.servicios) && incoming.servicios.length > 0
+                      ? incoming.servicios
+                      : existing.servicios || [],
+                  fiados: Array.from(fiadosMap.values()),
+                  citasEliminadas: Array.from(eliminadasSet).slice(-500),
+                };
+              }
+            } catch (mergeErr) {
+              console.error('Error fusionando datos en servidor:', mergeErr);
+            }
+          }
+
+          fs.writeFileSync(DB_FILE, JSON.stringify(finalData, null, 2), 'utf-8');
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ ok: true, timestamp: new Date().toISOString() }));
         } catch (err) {
@@ -101,6 +166,16 @@ const server = http.createServer((req, res) => {
         res.end('Error interno del servidor');
         return;
       }
+
+      // Control de caché: index.html nunca debe cachearse permanentemente
+      if (ext === '.html') {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+        res.setHeader('Pragma', 'no-cache');
+        res.setHeader('Expires', '0');
+      } else {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+
       res.writeHead(200, { 'Content-Type': contentType });
       res.end(content);
     });

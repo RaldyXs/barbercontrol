@@ -96,14 +96,18 @@ export class HttpAgendaStorage implements IAgendaStorage {
 
   /**
    * Carga datos unificando la memoria local del teléfono y el servidor en la nube.
-   * Resuelve conflictos por marca de tiempo y respeta estrictamente las citas eliminadas.
+   * Une inteligentemente citas entre el acceso directo y el navegador respetando citas eliminadas.
    */
   async cargar(): Promise<RespaldoCompleto | null> {
     const localData = this.leerDeLocalStorage();
-    const eliminadas = this.getEliminadas();
+    let eliminadas = this.getEliminadas();
 
     try {
-      const resp = await fetch(this.endpoint);
+      // Prevenir cualquier caché agresiva de Safari iOS mediante timestamp y no-store
+      const resp = await fetch(`${this.endpoint}?_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache, no-store' },
+      });
       if (resp.ok) {
         const serverData = await resp.json();
 
@@ -120,62 +124,59 @@ export class HttpAgendaStorage implements IAgendaStorage {
 
         // Si el servidor respondió con datos
         if (serverData && !serverData.empty) {
-          // Filtrar cualquier cita que haya sido eliminada en este dispositivo
+          // 1. Sincronizar lápidas (tombstones): si otra pestaña o acceso directo eliminó una cita, registrarlo
+          const serverEliminadas = Array.isArray(serverData.citasEliminadas)
+            ? serverData.citasEliminadas
+            : [];
+          if (serverEliminadas.length > 0) {
+            this.registrarEliminadas(serverEliminadas);
+            eliminadas = this.getEliminadas();
+          }
+
           const rawServerCitas: Cita[] = Array.isArray(serverData.citas) ? serverData.citas : [];
           const serverCitas = rawServerCitas.filter((c) => c && c.id && !eliminadas.has(c.id));
           const serverFiados: Fiado[] = Array.isArray(serverData.fiados) ? serverData.fiados : [];
           const serverServicios = Array.isArray(serverData.servicios) ? serverData.servicios : [];
 
-          // Si el servidor tenía citas que ya habían sido eliminadas, actualizar el servidor
-          if (rawServerCitas.length !== serverCitas.length) {
-            console.log('[HttpAgendaStorage] Purgando citas eliminadas que aún estaban en el servidor...');
-            this.guardarEnServidor({
-              version: serverData.version || '1.0',
-              fechaRespaldo: new Date().toISOString(),
-              citas: serverCitas,
-              servicios: serverServicios,
-              fiados: serverFiados,
-            }).catch(() => {});
-          }
+          // 2. Fusión unificada por ID para mantener sincronizados el acceso directo y Safari:
+          const citasMap = new Map<string, Cita>();
+          serverCitas.forEach((c) => {
+            if (c && c.id && !eliminadas.has(c.id)) {
+              citasMap.set(c.id, c);
+            }
+          });
 
-          // Si el servidor viene vacío tras un reinicio de Render pero el teléfono tiene citas válidas:
-          if (
-            serverCitas.length === 0 &&
-            serverFiados.length === 0 &&
-            localData &&
-            (localData.citas.length > 0 || localData.fiados.length > 0)
-          ) {
-            console.log(
-              '[HttpAgendaStorage] Servidor reiniciado. Restaurando citas válidas del teléfono...'
-            );
-            const restaurado: RespaldoCompleto = {
-              version: localData.version || '1.0',
-              fechaRespaldo: new Date().toISOString(),
-              citas: localData.citas,
-              servicios: serverServicios.length > 0 ? serverServicios : localData.servicios,
-              fiados: localData.fiados,
-            };
-            this.guardarEnServidor(restaurado).catch(() => {});
-            return restaurado;
-          }
+          (localData?.citas || []).forEach((c) => {
+            if (c && c.id && !eliminadas.has(c.id)) {
+              if (!citasMap.has(c.id)) {
+                citasMap.set(c.id, c);
+              } else {
+                const s = citasMap.get(c.id)!;
+                const timeServer = s.creadoEn ? Date.parse(s.creadoEn) : 0;
+                const timeLocal = c.creadoEn ? Date.parse(c.creadoEn) : 0;
+                citasMap.set(c.id, timeLocal >= timeServer ? c : s);
+              }
+            }
+          });
 
-          // Resolución por Marca de Tiempo (Last-Write-Wins):
-          const localTime = localData?.fechaRespaldo ? Date.parse(localData.fechaRespaldo) : 0;
-          const serverTime = serverData?.fechaRespaldo ? Date.parse(serverData.fechaRespaldo) : 0;
+          // 3. Fusión de fiados
+          const fiadosMap = new Map<string, Fiado>();
+          serverFiados.forEach((f) => {
+            if (f && f.id) fiadosMap.set(f.id, f);
+          });
+          (localData?.fiados || []).forEach((f) => {
+            if (f && f.id && !fiadosMap.has(f.id)) {
+              fiadosMap.set(f.id, f);
+            }
+          });
 
-          // Si el teléfono tiene cambios más recientes (ej. borrado reciente de citas), manda el teléfono
-          if (localData && localTime > serverTime) {
-            this.guardarEnServidor(localData).catch(() => {});
-            return localData;
-          }
-
-          // Si el servidor es más reciente o ambos son válidos, usar servidor filtrando eliminadas
           const resultado: RespaldoCompleto = {
             version: serverData.version || '1.0',
-            fechaRespaldo: serverData.fechaRespaldo || new Date().toISOString(),
-            citas: serverCitas,
+            fechaRespaldo: new Date().toISOString(),
+            citas: Array.from(citasMap.values()),
             servicios: serverServicios.length > 0 ? serverServicios : (localData?.servicios || []),
-            fiados: serverFiados.length > 0 ? serverFiados : (localData?.fiados || []),
+            fiados: Array.from(fiadosMap.values()),
+            citasEliminadas: Array.from(eliminadas).slice(-500),
           };
 
           this.guardarEnLocalStorage(resultado);
@@ -221,6 +222,7 @@ export class HttpAgendaStorage implements IAgendaStorage {
       ...datos,
       fechaRespaldo: new Date().toISOString(),
       citas: (datos.citas || []).filter((c) => c && c.id && !eliminadas.has(c.id)),
+      citasEliminadas: Array.from(eliminadas).slice(-500),
     };
 
     // 3. Guardar de inmediato en la memoria física del teléfono (0ms latencia)
