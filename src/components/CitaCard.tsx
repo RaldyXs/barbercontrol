@@ -31,6 +31,8 @@ interface CitaCardProps {
 export const CitaCard: React.FC<CitaCardProps> = ({ cita, servicio, onReprogramar }) => {
   const { cambiarEstadoCita, eliminarCita } = useAgenda();
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
+  const [confirmandoBloqueo, setConfirmandoBloqueo] = useState(false);
 
   // Si es un bloqueo personal (Almuerzo, Descanso, Diligencia)
   if (cita.esBloqueo) {
@@ -64,18 +66,38 @@ export const CitaCard: React.FC<CitaCardProps> = ({ cita, servicio, onReprograma
           </div>
 
           <div className="flex items-center gap-1">
-            <button
-              onClick={() => {
-                if (confirm(`¿Liberar este horario (${cita.clienteNombre})?`)) {
-                  eliminarCita(cita.id);
-                }
-              }}
-              className="text-xs text-stone-400 hover:text-rose-600 p-2 rounded-xl hover:bg-stone-200/50 transition-colors cursor-pointer flex items-center gap-1"
-              title="Liberar horario"
-            >
-              <Trash2 className="w-4 h-4" />
-              <span className="text-[11px] font-medium hidden sm:inline">Liberar</span>
-            </button>
+            {confirmandoBloqueo ? (
+              <div className="flex items-center gap-1 bg-white border border-stone-200 rounded-lg p-1 shadow-sm">
+                <span className="text-[10px] text-zinc-600 px-1 font-medium">¿Liberar?</span>
+                <button
+                  type="button"
+                  onClick={() => setConfirmandoBloqueo(false)}
+                  className="text-[10px] text-zinc-500 hover:text-zinc-700 px-1.5 py-0.5 rounded cursor-pointer"
+                >
+                  No
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setConfirmandoBloqueo(false);
+                    eliminarCita(cita.id);
+                  }}
+                  className="text-[10px] font-bold text-white bg-rose-600 hover:bg-rose-700 px-2 py-0.5 rounded shadow-sm cursor-pointer"
+                >
+                  Sí
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmandoBloqueo(true)}
+                className="text-xs text-stone-400 hover:text-rose-600 p-2 rounded-xl hover:bg-stone-200/50 transition-colors cursor-pointer flex items-center gap-1"
+                title="Liberar horario"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="text-[11px] font-medium hidden sm:inline">Liberar</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -95,6 +117,7 @@ export const CitaCard: React.FC<CitaCardProps> = ({ cita, servicio, onReprograma
   const esEnAtencion = cita.estado === 'en_atencion';
   const esPendiente = cita.estado === 'pendiente';
   const esNoAsistio = cita.estado === 'no_asistio';
+  const esCancelado = cita.estado === 'cancelado';
 
   // Generar iniciales del cliente para el avatar
   const clienteNombreSeguro = cita.clienteNombre || 'Cliente';
@@ -157,7 +180,7 @@ export const CitaCard: React.FC<CitaCardProps> = ({ cita, servicio, onReprograma
             </div>
           </div>
 
-          {/* Estado Badge y Menú */}
+          {/* Estado Badge, Botón Eliminar y Menú */}
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
             <div className="flex items-center gap-1.5">
               {esEnAtencion && (
@@ -180,11 +203,29 @@ export const CitaCard: React.FC<CitaCardProps> = ({ cita, servicio, onReprograma
                   No asistió
                 </span>
               )}
+              {esCancelado && (
+                <span className="text-[10px] font-bold bg-stone-100 text-stone-600 px-2 py-0.5 rounded-full border border-stone-200">
+                  Cancelado
+                </span>
+              )}
 
+              {/* Botón directo de Eliminar en la cabecera */}
+              <button
+                type="button"
+                onClick={() => setConfirmandoEliminar(true)}
+                className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 active:bg-rose-100 rounded-lg transition-colors cursor-pointer"
+                title="Eliminar cita"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+
+              {/* Menú de más opciones (...) */}
               <div className="relative">
                 <button
+                  type="button"
                   onClick={() => setMenuAbierto(!menuAbierto)}
-                  className="p-1 text-zinc-400 hover:text-zinc-700 rounded-lg transition-colors cursor-pointer"
+                  className="p-1.5 text-zinc-400 hover:text-zinc-700 rounded-lg transition-colors cursor-pointer"
+                  title="Más opciones"
                 >
                   <MoreHorizontal className="w-4 h-4" />
                 </button>
@@ -197,6 +238,7 @@ export const CitaCard: React.FC<CitaCardProps> = ({ cita, servicio, onReprograma
                     />
                     <div className="absolute right-0 top-7 z-50 w-44 bg-white border border-stone-200 rounded-xl shadow-xl py-1 text-xs text-zinc-700">
                       <button
+                        type="button"
                         onClick={() => {
                           setMenuAbierto(false);
                           onReprogramar(cita);
@@ -209,6 +251,7 @@ export const CitaCard: React.FC<CitaCardProps> = ({ cita, servicio, onReprograma
 
                       {esPendiente && (
                         <button
+                          type="button"
                           onClick={() => {
                             setMenuAbierto(false);
                             cambiarEstadoCita(cita.id, 'en_atencion');
@@ -223,6 +266,7 @@ export const CitaCard: React.FC<CitaCardProps> = ({ cita, servicio, onReprograma
                       {!esAtendido && (
                         <>
                           <button
+                            type="button"
                             onClick={() => {
                               setMenuAbierto(false);
                               cambiarEstadoCita(cita.id, 'no_asistio');
@@ -233,6 +277,7 @@ export const CitaCard: React.FC<CitaCardProps> = ({ cita, servicio, onReprograma
                             Marcar que no vino
                           </button>
                           <button
+                            type="button"
                             onClick={() => {
                               setMenuAbierto(false);
                               cambiarEstadoCita(cita.id, 'cancelado');
@@ -247,6 +292,7 @@ export const CitaCard: React.FC<CitaCardProps> = ({ cita, servicio, onReprograma
 
                       {esAtendido && (
                         <button
+                          type="button"
                           onClick={() => {
                             setMenuAbierto(false);
                             cambiarEstadoCita(cita.id, 'pendiente');
@@ -261,16 +307,15 @@ export const CitaCard: React.FC<CitaCardProps> = ({ cita, servicio, onReprograma
                       <div className="border-t border-stone-100 my-1" />
 
                       <button
+                        type="button"
                         onClick={() => {
                           setMenuAbierto(false);
-                          if (confirm(`¿Eliminar la cita de ${cita.clienteNombre}?`)) {
-                            eliminarCita(cita.id);
-                          }
+                          setConfirmandoEliminar(true);
                         }}
-                        className="w-full text-left px-3 py-2 hover:bg-rose-50 text-rose-600 flex items-center gap-2 cursor-pointer"
+                        className="w-full text-left px-3 py-2 hover:bg-rose-50 text-rose-600 flex items-center gap-2 cursor-pointer font-medium"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
-                        Eliminar
+                        Eliminar cita
                       </button>
                     </div>
                   </>
@@ -292,12 +337,43 @@ export const CitaCard: React.FC<CitaCardProps> = ({ cita, servicio, onReprograma
           </p>
         )}
 
+        {/* Banner de confirmación para eliminar sin depender de alert() del navegador */}
+        {confirmandoEliminar && (
+          <div className="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="text-xs font-semibold text-rose-900 flex items-center gap-1.5 min-w-0">
+              <Trash2 className="w-4 h-4 text-rose-600 flex-shrink-0" />
+              <span className="truncate">¿Eliminar cita de <strong>{cita.clienteNombre}</strong>?</span>
+            </div>
+            <div className="flex items-center gap-2 self-end sm:self-auto flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setConfirmandoEliminar(false)}
+                className="px-3 py-1.5 text-xs font-semibold text-zinc-700 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 cursor-pointer shadow-xs"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmandoEliminar(false);
+                  eliminarCita(cita.id);
+                }}
+                className="px-3 py-1.5 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-sm cursor-pointer flex items-center gap-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Sí, eliminar</span>
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Barra de Acciones del Barbero */}
         <div className="mt-3 pt-2.5 border-t border-stone-100 flex items-center gap-2">
           {esPendiente ? (
             <>
               {/* Botón Pasar a Atención */}
               <button
+                type="button"
                 onClick={() => cambiarEstadoCita(cita.id, 'en_atencion')}
                 className="flex-1 bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-amber-200"
               >
@@ -307,6 +383,7 @@ export const CitaCard: React.FC<CitaCardProps> = ({ cita, servicio, onReprograma
 
               {/* Botón Completar Directo */}
               <button
+                type="button"
                 onClick={() => cambiarEstadoCita(cita.id, 'atendido')}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold text-xs py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer"
               >
@@ -314,7 +391,17 @@ export const CitaCard: React.FC<CitaCardProps> = ({ cita, servicio, onReprograma
                 <span>Completar</span>
               </button>
 
-              {/* WhatsApp */}
+              {/* Botón Eliminar rápido */}
+              <button
+                type="button"
+                onClick={() => setConfirmandoEliminar(true)}
+                className="bg-stone-50 hover:bg-rose-50 text-stone-400 hover:text-rose-600 p-2 rounded-xl transition-colors flex items-center justify-center cursor-pointer border border-stone-200"
+                title="Eliminar cita"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+
+              {/* WhatsApp si tiene */}
               {cita.clienteTelefono && (
                 <a
                   href={generarEnlaceWhatsApp(
@@ -335,6 +422,7 @@ export const CitaCard: React.FC<CitaCardProps> = ({ cita, servicio, onReprograma
           ) : esEnAtencion ? (
             <>
               <button
+                type="button"
                 onClick={() => cambiarEstadoCita(cita.id, 'atendido')}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold text-xs py-2 px-3 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer"
               >
@@ -343,33 +431,69 @@ export const CitaCard: React.FC<CitaCardProps> = ({ cita, servicio, onReprograma
               </button>
 
               <button
+                type="button"
                 onClick={() => cambiarEstadoCita(cita.id, 'pendiente')}
                 className="text-xs text-zinc-500 hover:text-zinc-800 px-2 py-1 rounded cursor-pointer"
               >
                 Pausar
               </button>
+
+              <button
+                type="button"
+                onClick={() => setConfirmandoEliminar(true)}
+                className="p-1.5 text-stone-400 hover:text-rose-600 rounded-lg cursor-pointer"
+                title="Eliminar cita"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
             </>
           ) : esAtendido ? (
             <div className="w-full flex items-center justify-between text-xs text-zinc-500">
-              <span className="flex items-center gap-1 text-emerald-700 font-semibold">
-                <Check className="w-3.5 h-3.5 text-emerald-600" /> Corte cobrado y registrado
+              <span className="flex items-center gap-1 text-emerald-700 font-semibold truncate max-w-[170px]">
+                <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" /> Corte cobrado
               </span>
-              <button
-                onClick={() => cambiarEstadoCita(cita.id, 'pendiente')}
-                className="text-zinc-400 hover:text-zinc-700 underline cursor-pointer text-[11px]"
-              >
-                Deshacer
-              </button>
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => cambiarEstadoCita(cita.id, 'pendiente')}
+                  className="text-zinc-400 hover:text-zinc-700 underline cursor-pointer text-[11px]"
+                >
+                  Deshacer
+                </button>
+                <span className="text-stone-300">•</span>
+                <button
+                  type="button"
+                  onClick={() => setConfirmandoEliminar(true)}
+                  className="text-stone-400 hover:text-rose-600 flex items-center gap-1 cursor-pointer text-[11px] font-medium"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Eliminar</span>
+                </button>
+              </div>
             </div>
           ) : (
             <div className="w-full flex items-center justify-between text-xs text-zinc-500">
-              <span className="text-[11px] italic">No asistió al turno</span>
-              <button
-                onClick={() => cambiarEstadoCita(cita.id, 'pendiente')}
-                className="text-amber-800 hover:underline font-semibold text-[11px] cursor-pointer"
-              >
-                Reactivar
-              </button>
+              <span className="text-[11px] italic">
+                {esCancelado ? 'Turno cancelado' : 'No asistió al turno'}
+              </span>
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => cambiarEstadoCita(cita.id, 'pendiente')}
+                  className="text-amber-800 hover:underline font-semibold text-[11px] cursor-pointer"
+                >
+                  Reactivar
+                </button>
+                <span className="text-stone-300">•</span>
+                <button
+                  type="button"
+                  onClick={() => setConfirmandoEliminar(true)}
+                  className="text-rose-600 hover:underline font-semibold text-[11px] cursor-pointer flex items-center gap-1"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Eliminar</span>
+                </button>
+              </div>
             </div>
           )}
         </div>

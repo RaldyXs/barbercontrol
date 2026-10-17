@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Cita } from '../types';
 import { useAgenda } from '../context/AgendaContext';
-import { X, Check } from 'lucide-react';
+import { X, Check, Trash2 } from 'lucide-react';
 
 interface ReprogramarModalProps {
   cita: Cita | null;
@@ -9,9 +9,10 @@ interface ReprogramarModalProps {
 }
 
 export const ReprogramarModal: React.FC<ReprogramarModalProps> = ({ cita, onClose }) => {
-  const { reprogramarCita } = useAgenda();
+  const { reprogramarCita, eliminarCita } = useAgenda();
   const [nuevaFecha, setNuevaFecha] = useState(cita?.fecha || '');
   const [nuevaHora, setNuevaHora] = useState(cita?.hora || '');
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState(false);
 
   if (!cita) return null;
 
@@ -66,7 +67,7 @@ export const ReprogramarModal: React.FC<ReprogramarModalProps> = ({ cita, onClos
             />
           </div>
 
-          <div className="pt-2">
+          <div className="pt-2 space-y-2">
             <button
               type="submit"
               className="w-full bg-amber-800 hover:bg-amber-900 text-white font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-sm"
@@ -74,6 +75,40 @@ export const ReprogramarModal: React.FC<ReprogramarModalProps> = ({ cita, onClos
               <Check className="w-4 h-4" />
               <span>Guardar Cambio</span>
             </button>
+
+            {confirmandoEliminar ? (
+              <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-rose-800">¿Eliminar este turno?</span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setConfirmandoEliminar(false)}
+                    className="px-2.5 py-1 text-xs font-medium text-zinc-600 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 cursor-pointer"
+                  >
+                    No
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      eliminarCita(cita.id);
+                      onClose();
+                    }}
+                    className="px-2.5 py-1 text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-lg shadow-sm cursor-pointer"
+                  >
+                    Sí, eliminar
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmandoEliminar(true)}
+                className="w-full text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 py-2 rounded-xl font-semibold flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Eliminar turno</span>
+              </button>
+            )}
           </div>
         </form>
       </div>

@@ -140,7 +140,11 @@ export const AgendaProvider: React.FC<AgendaProviderProps> = ({
   };
 
   const eliminarCita = (citaId: string) => {
-    setCitas((prev) => prev.filter((c) => c.id !== citaId));
+    setCitas((prev) => {
+      const actualizadas = prev.filter((c) => c.id !== citaId);
+      persistirDatos(actualizadas, servicios, fiados);
+      return actualizadas;
+    });
   };
 
   // --- Operaciones de Servicios (IServiciosOperations) ---
