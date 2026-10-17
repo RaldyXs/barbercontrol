@@ -162,6 +162,17 @@ export const AgendaProvider: React.FC<AgendaProviderProps> = ({
   };
 
   const eliminarCita = (citaId: string) => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const raw = window.localStorage.getItem('barbercontrol_citas_eliminadas_v1');
+        const arr = raw ? JSON.parse(raw) : [];
+        if (!arr.includes(citaId)) {
+          arr.push(citaId);
+          window.localStorage.setItem('barbercontrol_citas_eliminadas_v1', JSON.stringify(arr));
+        }
+      }
+    } catch (_) {}
+
     setCitas((prev) => {
       const actualizadas = prev.filter((c) => c.id !== citaId);
       persistirDatos(actualizadas, servicios, fiados);
