@@ -391,16 +391,6 @@ export const CitaCard: React.FC<CitaCardProps> = ({ cita, servicio, onReprograma
                 <span>Completar</span>
               </button>
 
-              {/* Botón Eliminar rápido */}
-              <button
-                type="button"
-                onClick={() => setConfirmandoEliminar(true)}
-                className="bg-stone-50 hover:bg-rose-50 text-stone-400 hover:text-rose-600 p-2 rounded-xl transition-colors flex items-center justify-center cursor-pointer border border-stone-200"
-                title="Eliminar cita"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-
               {/* WhatsApp si tiene */}
               {cita.clienteTelefono && (
                 <a
@@ -437,63 +427,32 @@ export const CitaCard: React.FC<CitaCardProps> = ({ cita, servicio, onReprograma
               >
                 Pausar
               </button>
-
-              <button
-                type="button"
-                onClick={() => setConfirmandoEliminar(true)}
-                className="p-1.5 text-stone-400 hover:text-rose-600 rounded-lg cursor-pointer"
-                title="Eliminar cita"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
             </>
           ) : esAtendido ? (
             <div className="w-full flex items-center justify-between text-xs text-zinc-500">
               <span className="flex items-center gap-1 text-emerald-700 font-semibold truncate max-w-[170px]">
                 <Check className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" /> Corte cobrado
               </span>
-              <div className="flex items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => cambiarEstadoCita(cita.id, 'pendiente')}
-                  className="text-zinc-400 hover:text-zinc-700 underline cursor-pointer text-[11px]"
-                >
-                  Deshacer
-                </button>
-                <span className="text-stone-300">•</span>
-                <button
-                  type="button"
-                  onClick={() => setConfirmandoEliminar(true)}
-                  className="text-stone-400 hover:text-rose-600 flex items-center gap-1 cursor-pointer text-[11px] font-medium"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Eliminar</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => cambiarEstadoCita(cita.id, 'pendiente')}
+                className="text-zinc-400 hover:text-zinc-700 underline cursor-pointer text-[11px]"
+              >
+                Deshacer
+              </button>
             </div>
           ) : (
             <div className="w-full flex items-center justify-between text-xs text-zinc-500">
               <span className="text-[11px] italic">
                 {esCancelado ? 'Turno cancelado' : 'No asistió al turno'}
               </span>
-              <div className="flex items-center gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => cambiarEstadoCita(cita.id, 'pendiente')}
-                  className="text-amber-800 hover:underline font-semibold text-[11px] cursor-pointer"
-                >
-                  Reactivar
-                </button>
-                <span className="text-stone-300">•</span>
-                <button
-                  type="button"
-                  onClick={() => setConfirmandoEliminar(true)}
-                  className="text-rose-600 hover:underline font-semibold text-[11px] cursor-pointer flex items-center gap-1"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Eliminar</span>
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => cambiarEstadoCita(cita.id, 'pendiente')}
+                className="text-amber-800 hover:underline font-semibold text-[11px] cursor-pointer"
+              >
+                Reactivar
+              </button>
             </div>
           )}
         </div>
