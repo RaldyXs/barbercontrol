@@ -188,4 +188,12 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`👉 http://localhost:${PORT}`);
   console.log(`👉 Base de datos automática en: ${DB_FILE}`);
   console.log('========================================================');
+
+  // Si se configuró SYNC_UPSTREAM, iniciar el demonio de sincronización continuo integrado
+  const upstream = process.env.SYNC_UPSTREAM || process.env.RENDER_URL;
+  if (upstream) {
+    import('./scripts/sync-daemon.js').catch((err) => {
+      console.warn('[Sync] No se pudo iniciar el demonio de sincronización integrado:', err.message);
+    });
+  }
 });
