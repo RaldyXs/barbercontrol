@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  barbercontrol:
+    build: .
+    container_name: barbercontrol
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - SYNC_UPSTREAM=https://barbercontrol-59hb.onrender.com
+      - SYNC_INTERVAL_SEC=60
+    volumes:
+      - ./server-data:/app/server-data
