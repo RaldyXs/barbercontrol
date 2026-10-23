@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useAgenda } from '../context/AgendaContext';
+import { Fiado } from '../types';
 import {
   formatearMonedaRD,
   getFechaHoyLocal,
+  formatearFechaCorta,
 } from '../utils/formatters';
 import {
   Calendar,
@@ -14,6 +16,10 @@ import {
   CreditCard,
   DollarSign,
   TrendingUp,
+  HandCoins,
+  ChevronDown,
+  ChevronUp,
+  History,
 } from 'lucide-react';
 
 export const CajaView: React.FC = () => {
@@ -25,6 +31,8 @@ export const CajaView: React.FC = () => {
     agregarFiado,
     toggleSaldarFiado,
     eliminarFiado,
+    abonarFiado,
+    eliminarAbono,
   } = useAgenda();
 
   const [pestaña, setPestaña] = useState<'balance' | 'fiados'>('balance');
@@ -36,6 +44,42 @@ export const CajaView: React.FC = () => {
   const [nuevoMonto, setNuevoMonto] = useState(350);
   const [nuevoConcepto, setNuevoConcepto] = useState('Corte de cabello');
   const [nuevasNotas, setNuevasNotas] = useState('');
+
+  // Modal registrar abono
+  const [fiadoParaAbono, setFiadoParaAbono] = useState<Fiado | null>(null);
+  const [montoAbono, setMontoAbono] = useState<number | ''>('');
+  const [fechaAbono, setFechaAbono] = useState<string>(getFechaHoyLocal());
+
+  // Tarjetas con historial expandido
+  const [abonosExpandidos, setAbonosExpandidos] = useState<{ [id: string]: boolean }>({});
+
+  const toggleExpandirAbonos = (fiadoId: string) => {
+    setAbonosExpandidos((prev) => ({
+      ...prev,
+      [fiadoId]: !prev[fiadoId],
+    }));
+  };
+
+  const abrirModalAbono = (fiado: Fiado) => {
+    setFiadoParaAbono(fiado);
+    setMontoAbono(fiado.montoRD <= 500 ? fiado.montoRD : 500);
+    setFechaAbono(getFechaHoyLocal());
+  };
+
+  const cerrarModalAbono = () => {
+    setFiadoParaAbono(null);
+    setMontoAbono('');
+  };
+
+  const handleRegistrarAbono = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fiadoParaAbono) return;
+    const abonoNum = Number(montoAbono);
+    if (!abonoNum || abonoNum <= 0) return;
+
+    abonarFiado(fiadoParaAbono.id, abonoNum, fechaAbono);
+    cerrarModalAbono();
+  };
 
   const hoyLocal = getFechaHoyLocal();
   const resumen = getResumenCaja(fechaSeleccionada);
@@ -206,75 +250,187 @@ export const CajaView: React.FC = () => {
           </div>
 
           {/* Lista de Fiados */}
-          <div className="space-y-2.5">
-            {fiados.map((fiado) => (
-              <div
-                key={fiado.id}
-                className={`bg-white border rounded-2xl p-3.5 shadow-sm transition-all ${
-                  fiado.saldado ? 'border-stone-200 opacity-60' : 'border-amber-200'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className={`font-bold text-sm ${fiado.saldado ? 'text-zinc-500 line-through' : 'text-zinc-900'}`}>
-                        {fiado.clienteNombre}
-                      </h4>
-                      {fiado.saldado ? (
-                        <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" /> Pagado
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <AlertCircle className="w-2.5 h-2.5 text-amber-600" /> Debe
-                        </span>
+          <div className="space-y-3">
+            {fiados.map((fiado) => {
+              const abonos = Array.isArray(fiado.abonos) ? fiado.abonos : [];
+              const totalAbonado = abonos.reduce((sum, a) => sum + (a.montoRD || 0), 0);
+              const deudaOriginal = fiado.montoOriginalRD ?? (fiado.montoRD + totalAbonado);
+              const estaExpandido = !!abonosExpandidos[fiado.id];
+
+              return (
+                <div
+                  key={fiado.id}
+                  className={`bg-white border rounded-2xl p-4 shadow-sm transition-all ${
+                    fiado.saldado ? 'border-stone-200 opacity-60' : 'border-amber-200'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4
+                          className={`font-bold text-sm ${
+                            fiado.saldado ? 'text-zinc-500 line-through' : 'text-zinc-900'
+                          }`}
+                        >
+                          {fiado.clienteNombre}
+                        </h4>
+                        {fiado.saldado ? (
+                          <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600" /> Pagado
+                          </span>
+                        ) : (
+                          <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <AlertCircle className="w-2.5 h-2.5 text-amber-600" /> Debe
+                          </span>
+                        )}
+                      </div>
+
+                      <p className="text-xs text-zinc-500 mt-0.5">
+                        {fiado.concepto} {fiado.fecha ? `• ${formatearFechaCorta(fiado.fecha)}` : ''}
+                      </p>
+
+                      {fiado.notas && (
+                        <p className="text-[11px] text-zinc-400 italic mt-1">
+                          "{fiado.notas}"
+                        </p>
+                      )}
+
+                      {/* Desglose de Deuda / Abonos si ya ha realizado abonos */}
+                      {totalAbonado > 0 && (
+                        <div className="mt-2 text-[11px] flex items-center gap-2 text-zinc-500 flex-wrap">
+                          <span>
+                            Original: <strong className="text-zinc-700">{formatearMonedaRD(deudaOriginal)}</strong>
+                          </span>
+                          <span>•</span>
+                          <span>
+                            Abonado: <strong className="text-emerald-700 font-bold">{formatearMonedaRD(totalAbonado)}</strong>
+                          </span>
+                        </div>
                       )}
                     </div>
 
-                    <p className="text-xs text-zinc-500 mt-0.5">
-                      {fiado.concepto}
-                    </p>
-
-                    {fiado.notas && (
-                      <p className="text-[11px] text-zinc-400 italic mt-1">
-                        "{fiado.notas}"
-                      </p>
-                    )}
-                  </div>
-
-                  <div className="text-right flex-shrink-0">
-                    <div className="font-black text-sm text-zinc-900">
-                      {formatearMonedaRD(fiado.montoRD)}
-                    </div>
-
-                    <div className="flex items-center gap-1 mt-2">
-                      <button
-                        onClick={() => toggleSaldarFiado(fiado.id)}
-                        className={`text-xs font-bold px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                          fiado.saldado
-                            ? 'bg-stone-100 text-zinc-600 hover:bg-stone-200'
-                            : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm'
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                        {fiado.saldado ? 'Saldado' : 'Resta'}
+                      </div>
+                      <div
+                        className={`font-black text-base ${
+                          fiado.saldado ? 'text-zinc-400 line-through' : 'text-amber-900'
                         }`}
                       >
-                        {fiado.saldado ? 'Reabrir' : 'Cobrar'}
-                      </button>
+                        {formatearMonedaRD(fiado.montoRD)}
+                      </div>
 
-                      <button
-                        onClick={() => {
-                          if (confirm(`¿Eliminar la deuda de ${fiado.clienteNombre}?`)) {
-                            eliminarFiado(fiado.id);
-                          }
-                        }}
-                        className="p-1 text-zinc-400 hover:text-rose-600 transition-colors cursor-pointer"
-                        title="Eliminar"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center justify-end gap-1.5 mt-2 flex-wrap">
+                        {!fiado.saldado && (
+                          <button
+                            type="button"
+                            onClick={() => abrirModalAbono(fiado)}
+                            className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-2.5 py-1.5 rounded-lg flex items-center gap-1 shadow-sm transition-all cursor-pointer"
+                            title="Abonar a esta cuenta"
+                          >
+                            <HandCoins className="w-3.5 h-3.5" />
+                            <span>Abonar</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => toggleSaldarFiado(fiado.id)}
+                          className={`text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                            fiado.saldado
+                              ? 'bg-stone-100 text-zinc-600 hover:bg-stone-200'
+                              : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm'
+                          }`}
+                          title={fiado.saldado ? 'Reabrir deuda' : 'Marcar como pagado'}
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          <span>{fiado.saldado ? 'Reabrir' : 'Cobrar'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (confirm(`¿Eliminar la deuda de ${fiado.clienteNombre}?`)) {
+                              eliminarFiado(fiado.id);
+                            }
+                          }}
+                          className="p-1.5 text-zinc-400 hover:text-rose-600 transition-colors cursor-pointer rounded-lg hover:bg-rose-50"
+                          title="Eliminar registro"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Sección de Historial de Abonos Desplegable */}
+                  {abonos.length > 0 && (
+                    <div className="mt-3 pt-2.5 border-t border-stone-100">
+                      <button
+                        type="button"
+                        onClick={() => toggleExpandirAbonos(fiado.id)}
+                        className="text-xs font-semibold text-zinc-600 hover:text-zinc-900 flex items-center gap-1.5 cursor-pointer py-0.5"
+                      >
+                        <History className="w-3.5 h-3.5 text-amber-700" />
+                        <span>Historial de abonos ({abonos.length})</span>
+                        {estaExpandido ? (
+                          <ChevronUp className="w-3.5 h-3.5 text-zinc-400" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 text-zinc-400" />
+                        )}
+                      </button>
+
+                      {estaExpandido && (
+                        <div className="mt-2 bg-stone-50 rounded-xl p-2.5 space-y-1.5 border border-stone-100">
+                          {abonos.map((abono) => (
+                            <div
+                              key={abono.id}
+                              className="flex items-center justify-between text-xs py-1 px-1.5 hover:bg-white rounded-lg transition-colors"
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="font-semibold text-zinc-700">
+                                  {formatearFechaCorta(abono.fecha)}
+                                </span>
+                                {abono.notas && (
+                                  <span className="text-[11px] bg-stone-200/70 text-zinc-600 px-1.5 py-0.5 rounded">
+                                    {abono.notas}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-emerald-700">
+                                  +{formatearMonedaRD(abono.montoRD)}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (
+                                      confirm(
+                                        `¿Eliminar este abono de ${formatearMonedaRD(
+                                          abono.montoRD
+                                        )} del ${formatearFechaCorta(abono.fecha)}? Se sumará de nuevo a la deuda.`
+                                      )
+                                    ) {
+                                      eliminarAbono(fiado.id, abono.id);
+                                    }
+                                  }}
+                                  className="text-zinc-300 hover:text-rose-600 transition-colors p-0.5 cursor-pointer"
+                                  title="Eliminar este abono"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -372,6 +528,180 @@ export const CajaView: React.FC = () => {
                   className="w-full bg-amber-800 hover:bg-amber-900 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all cursor-pointer"
                 >
                   Guardar Fiado
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para Registrar Abono a Fiado */}
+      {fiadoParaAbono && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white rounded-t-3xl sm:rounded-2xl max-w-md w-full p-5 text-zinc-900 shadow-2xl">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center text-amber-800">
+                  <HandCoins className="w-4 h-4" />
+                </div>
+                <div>
+                  <h2 className="text-base font-bold text-zinc-900">
+                    Abonar a Cuenta
+                  </h2>
+                  <p className="text-xs text-zinc-500">
+                    Cliente: <strong className="text-zinc-800">{fiadoParaAbono.clienteNombre}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={cerrarModalAbono}
+                className="p-1 text-zinc-400 hover:text-zinc-700 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Resumen del Fiado */}
+            <div className="mt-3 bg-amber-50/70 border border-amber-200/70 rounded-2xl p-3 flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">
+                  Saldo pendiente
+                </span>
+                <div className="text-xl font-black text-amber-900">
+                  {formatearMonedaRD(fiadoParaAbono.montoRD)}
+                </div>
+              </div>
+              <div className="text-right text-xs text-zinc-500">
+                <div>Concepto: {fiadoParaAbono.concepto}</div>
+                {fiadoParaAbono.fecha && (
+                  <div>Desde: {formatearFechaCorta(fiadoParaAbono.fecha)}</div>
+                )}
+              </div>
+            </div>
+
+            <form onSubmit={handleRegistrarAbono} className="mt-4 space-y-3.5">
+              {/* Monto del abono */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 mb-1">
+                  Monto a Abonar (RD$) *
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  max={fiadoParaAbono.montoRD}
+                  step="any"
+                  value={montoAbono}
+                  onChange={(e) => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    setMontoAbono(val);
+                  }}
+                  className="w-full bg-stone-50 border border-stone-200 focus:border-amber-700 rounded-xl px-3 py-2 text-base text-zinc-900 font-black outline-none"
+                  placeholder="Ej. 500"
+                  autoFocus
+                />
+
+                {/* Botones rápidos */}
+                <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                  {[200, 300, 500, 1000]
+                    .filter((m) => m < fiadoParaAbono.montoRD)
+                    .map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setMontoAbono(m)}
+                        className={`text-xs px-2.5 py-1 rounded-lg border font-semibold transition-all cursor-pointer ${
+                          montoAbono === m
+                            ? 'bg-amber-800 text-white border-amber-800'
+                            : 'bg-stone-50 text-zinc-700 border-stone-200 hover:bg-stone-100'
+                        }`}
+                      >
+                        +{formatearMonedaRD(m)}
+                      </button>
+                    ))}
+                  <button
+                    type="button"
+                    onClick={() => setMontoAbono(fiadoParaAbono.montoRD)}
+                    className={`text-xs px-2.5 py-1 rounded-lg border font-bold transition-all cursor-pointer ${
+                      montoAbono === fiadoParaAbono.montoRD
+                        ? 'bg-emerald-700 text-white border-emerald-700'
+                        : 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                    }`}
+                  >
+                    Pagar Todo ({formatearMonedaRD(fiadoParaAbono.montoRD)})
+                  </button>
+                </div>
+              </div>
+
+              {/* Selector de Fecha */}
+              <div>
+                <label className="block text-xs font-bold text-zinc-700 mb-1">
+                  Fecha del Abono *
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    required
+                    value={fechaAbono}
+                    onChange={(e) => setFechaAbono(e.target.value)}
+                    className="flex-1 bg-stone-50 border border-stone-200 focus:border-amber-700 rounded-xl px-3 py-2 text-sm text-zinc-900 outline-none font-semibold cursor-pointer"
+                  />
+                  {fechaAbono !== hoyLocal && (
+                    <button
+                      type="button"
+                      onClick={() => setFechaAbono(hoyLocal)}
+                      className="text-xs bg-stone-100 hover:bg-stone-200 text-zinc-700 font-bold px-2.5 py-2 rounded-xl transition-colors cursor-pointer"
+                    >
+                      Hoy
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Previsualización del Saldo Restante */}
+              {Number(montoAbono) > 0 && (
+                <div
+                  className={`p-3 rounded-xl border text-xs ${
+                    Number(montoAbono) >= fiadoParaAbono.montoRD
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                      : 'bg-stone-50 border-stone-200 text-zinc-700'
+                  }`}
+                >
+                  {Number(montoAbono) >= fiadoParaAbono.montoRD ? (
+                    <div className="flex items-center gap-1.5 font-bold text-emerald-800">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>¡Este abono saldará la deuda por completo! Pasará a Pagado.</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <span>Saldo restante después de este abono:</span>
+                      <strong className="text-amber-800 font-black text-sm">
+                        {formatearMonedaRD(
+                          Math.max(0, fiadoParaAbono.montoRD - Number(montoAbono))
+                        )}
+                      </strong>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="pt-2 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={cerrarModalAbono}
+                  className="w-1/3 bg-stone-100 hover:bg-stone-200 text-zinc-700 font-bold py-2.5 px-3 rounded-xl text-xs transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={!montoAbono || Number(montoAbono) <= 0}
+                  className="flex-1 bg-amber-800 hover:bg-amber-900 disabled:opacity-50 text-white font-bold py-2.5 px-4 rounded-xl text-xs shadow-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <HandCoins className="w-4 h-4" />
+                  <span>
+                    Confirmar Abono ({formatearMonedaRD(Number(montoAbono) || 0)})
+                  </span>
                 </button>
               </div>
             </form>

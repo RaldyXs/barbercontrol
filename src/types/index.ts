@@ -24,15 +24,25 @@ export interface Cita {
   creadoEn: string;
 }
 
+export interface AbonoFiado {
+  id: string;
+  montoRD: number;
+  fecha: string; // YYYY-MM-DD
+  creadoEn: string; // ISO
+  notas?: string;
+}
+
 export interface Fiado {
   id: string;
   clienteNombre: string;
   clienteTelefono?: string;
   montoRD: number;
+  montoOriginalRD?: number;
   concepto: string;
   fecha: string;
   saldado: boolean;
   notas?: string;
+  abonos?: AbonoFiado[];
 }
 
 export interface ClienteFrecuente {
@@ -93,6 +103,8 @@ export interface IFiadosOperations {
   agregarFiado: (fiado: Omit<Fiado, 'id'>) => void;
   toggleSaldarFiado: (fiadoId: string) => void;
   eliminarFiado: (fiadoId: string) => void;
+  abonarFiado: (fiadoId: string, montoAbono: number, fechaAbono?: string, notas?: string) => void;
+  eliminarAbono: (fiadoId: string, abonoId: string) => void;
 }
 
 export interface ICajaAnalytics {

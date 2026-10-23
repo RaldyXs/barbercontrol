@@ -32,3 +32,6 @@ lerna-debug.log*
 # Cloudflare tunnel binary
 bin/
 *.exe
+
+# Local database backups
+server-data/backups/

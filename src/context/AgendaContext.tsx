@@ -6,6 +6,7 @@ import {
   VistaActiva,
   ResumenCaja,
   Fiado,
+  AbonoFiado,
   AgendaContextType,
 } from '../types';
 import { SERVICIOS_INICIALES } from '../data/serviciosIniciales';
@@ -259,6 +260,65 @@ export const AgendaProvider: React.FC<AgendaProviderProps> = ({
     setFiados((prev) => prev.filter((f) => f.id !== fiadoId));
   };
 
+  const abonarFiado = (
+    fiadoId: string,
+    montoAbono: number,
+    fechaAbono?: string,
+    notas?: string
+  ) => {
+    if (montoAbono <= 0) return;
+    setFiados((prev) =>
+      prev.map((f) => {
+        if (f.id !== fiadoId) return f;
+
+        const totalAbonadoPrevio = f.abonos?.reduce((acc, a) => acc + (a.montoRD || 0), 0) || 0;
+        const montoOriginal = f.montoOriginalRD ?? (f.montoRD + totalAbonadoPrevio);
+
+        const nuevoAbono: AbonoFiado = {
+          id: 'abono-' + Date.now(),
+          montoRD: montoAbono,
+          fecha: fechaAbono || getFechaHoyLocal(),
+          creadoEn: new Date().toISOString(),
+          notas: notas?.trim() || undefined,
+        };
+
+        const abonosActuales = f.abonos ? [...f.abonos, nuevoAbono] : [nuevoAbono];
+        const nuevoMontoRD = Math.max(0, f.montoRD - montoAbono);
+        const estaSaldado = nuevoMontoRD === 0;
+
+        return {
+          ...f,
+          montoOriginalRD: montoOriginal,
+          montoRD: nuevoMontoRD,
+          saldado: estaSaldado,
+          abonos: abonosActuales,
+        };
+      })
+    );
+  };
+
+  const eliminarAbono = (fiadoId: string, abonoId: string) => {
+    setFiados((prev) =>
+      prev.map((f) => {
+        if (f.id !== fiadoId || !f.abonos) return f;
+
+        const abonoAEliminar = f.abonos.find((a) => a.id === abonoId);
+        if (!abonoAEliminar) return f;
+
+        const abonosFiltrados = f.abonos.filter((a) => a.id !== abonoId);
+        const nuevoMontoRD = f.montoRD + abonoAEliminar.montoRD;
+        const estaSaldado = nuevoMontoRD === 0;
+
+        return {
+          ...f,
+          montoRD: nuevoMontoRD,
+          saldado: estaSaldado,
+          abonos: abonosFiltrados,
+        };
+      })
+    );
+  };
+
   // --- Respaldos manuales ---
   const exportarRespaldoJSON = () => {
     const datosRespaldo = {
@@ -318,6 +378,8 @@ export const AgendaProvider: React.FC<AgendaProviderProps> = ({
         agregarFiado,
         toggleSaldarFiado,
         eliminarFiado,
+        abonarFiado,
+        eliminarAbono,
         exportarRespaldoJSON,
         importarRespaldoJSON,
         getResumenCaja,

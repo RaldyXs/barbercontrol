@@ -94,3 +94,19 @@ export function generarEnlaceWhatsApp(telefono: string, clienteNombre: string, s
   );
   return `https://wa.me/${cleanPhone.length === 10 ? '1' + cleanPhone : cleanPhone}?text=${mensaje}`;
 }
+
+// Formatear fecha corta legible (ej: "23 oct 2026")
+export function formatearFechaCorta(fechaStr: string): string {
+  if (!fechaStr || typeof fechaStr !== 'string') return '';
+  const parts = fechaStr.split('-').map(Number);
+  if (parts.length < 3 || isNaN(parts[0]) || isNaN(parts[1]) || isNaN(parts[2])) {
+    return fechaStr;
+  }
+  const [year, month, day] = parts;
+  const d = new Date(year, month - 1, day);
+  return d.toLocaleDateString('es-DO', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
