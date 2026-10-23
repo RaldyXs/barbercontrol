@@ -110,3 +110,13 @@ export function formatearFechaCorta(fechaStr: string): string {
     year: 'numeric',
   });
 }
+
+// Normalizar texto para comparaciones sin importar mayúsculas, minúsculas o acentos (ej. "Cabezón" === "cabezon")
+export function normalizarTexto(texto: string): string {
+  if (!texto || typeof texto !== 'string') return '';
+  return texto
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}

@@ -59,6 +59,7 @@ export interface RespaldoCompleto {
   servicios: Servicio[];
   fiados: Fiado[];
   citasEliminadas?: string[];
+  fiadosEliminados?: string[];
 }
 
 export type VistaActiva = 'hoy' | 'semana' | 'caja' | 'servicios';

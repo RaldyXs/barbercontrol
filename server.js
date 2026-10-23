@@ -104,6 +104,11 @@ const server = http.createServer((req, res) => {
               ...(Array.isArray(incoming.citasEliminadas) ? incoming.citasEliminadas : []),
             ]);
 
+            const fiadosEliminadosSet = new Set([
+              ...(Array.isArray(existing.fiadosEliminados) ? existing.fiadosEliminados : []),
+              ...(Array.isArray(incoming.fiadosEliminados) ? incoming.fiadosEliminados : []),
+            ]);
+
             // Mapa unificado de citas por ID
             const citasMap = new Map();
             (Array.isArray(existing.citas) ? existing.citas : []).forEach((c) => {
@@ -127,10 +132,10 @@ const server = http.createServer((req, res) => {
             // Mapa unificado de fiados por ID
             const fiadosMap = new Map();
             (Array.isArray(existing.fiados) ? existing.fiados : []).forEach((f) => {
-              if (f && f.id) fiadosMap.set(f.id, f);
+              if (f && f.id && !fiadosEliminadosSet.has(f.id)) fiadosMap.set(f.id, f);
             });
             (Array.isArray(incoming.fiados) ? incoming.fiados : []).forEach((f) => {
-              if (f && f.id) fiadosMap.set(f.id, f);
+              if (f && f.id && !fiadosEliminadosSet.has(f.id)) fiadosMap.set(f.id, f);
             });
 
             finalData = {
@@ -143,6 +148,7 @@ const server = http.createServer((req, res) => {
                   : existing.servicios || [],
               fiados: Array.from(fiadosMap.values()),
               citasEliminadas: Array.from(eliminadasSet).slice(-500),
+              fiadosEliminados: Array.from(fiadosEliminadosSet).slice(-500),
             };
           }
 

@@ -3,14 +3,15 @@ import { RespaldoCompleto, Cita, Fiado } from '../types';
 
 const LOCAL_STORAGE_KEY = 'barbercontrol_agenda_v1';
 const ELIMINADAS_STORAGE_KEY = 'barbercontrol_citas_eliminadas_v1';
+const FIADOS_ELIMINADOS_STORAGE_KEY = 'barbercontrol_fiados_eliminados_v1';
 const PENDING_SYNC_KEY = 'barbercontrol_pending_sync';
 
 /**
  * Almacenamiento Híbrido Resiliente (Offline-First + Cloud Sync + Tombstones)
  * Principio SOLID (SRP & DIP):
  * 1. Persistencia dual inmediata: guarda en teléfono (localStorage) y replica en nube (/api/agenda).
- * 2. Cero resurrección de citas: utiliza Tombstones (IDs eliminados) para que las citas borradas
- *    NUNCA vuelvan a aparecer al recargar la página o sincronizar con el servidor.
+ * 2. Cero resurrección de citas y fiados: utiliza Tombstones (IDs eliminados) para que los registros borrados
+ *    o fusionados NUNCA vuelvan a aparecer al recargar la página o sincronizar con el servidor.
  * 3. Auto-recuperación: si el servidor de Render se reinicia, restaura citas válidas del teléfono.
  */
 export class HttpAgendaStorage implements IAgendaStorage {
@@ -53,6 +54,38 @@ export class HttpAgendaStorage implements IAgendaStorage {
   }
 
   /**
+   * Obtiene el conjunto de IDs de fiados eliminados o fusionados intencionalmente
+   */
+  private getFiadosEliminados(): Set<string> {
+    try {
+      if (typeof window === 'undefined' || !window.localStorage) return new Set();
+      const raw = window.localStorage.getItem(FIADOS_ELIMINADOS_STORAGE_KEY);
+      if (!raw) return new Set();
+      const arr = JSON.parse(raw);
+      return new Set(Array.isArray(arr) ? arr : []);
+    } catch {
+      return new Set();
+    }
+  }
+
+  /**
+   * Registra IDs de fiados como eliminados o fusionados permanentemente
+   */
+  public registrarFiadosEliminados(ids: string[]): void {
+    try {
+      if (typeof window === 'undefined' || !window.localStorage || ids.length === 0) return;
+      const set = this.getFiadosEliminados();
+      ids.forEach((id) => set.add(id));
+      window.localStorage.setItem(
+        FIADOS_ELIMINADOS_STORAGE_KEY,
+        JSON.stringify(Array.from(set))
+      );
+    } catch (e) {
+      console.warn('[HttpAgendaStorage] Error guardando IDs fiados eliminados:', e);
+    }
+  }
+
+  /**
    * Lee la copia física de seguridad guardada en el teléfono/navegador (0ms latencia)
    */
   public leerDeLocalStorage(): RespaldoCompleto | null {
@@ -64,8 +97,12 @@ export class HttpAgendaStorage implements IAgendaStorage {
       if (!parsed || typeof parsed !== 'object') return null;
 
       const eliminadas = this.getEliminadas();
+      const fiadosEliminados = this.getFiadosEliminados();
       const citasLimpias = (Array.isArray(parsed.citas) ? parsed.citas : []).filter(
         (c: Cita) => c && c.id && !eliminadas.has(c.id)
+      );
+      const fiadosLimpios = (Array.isArray(parsed.fiados) ? parsed.fiados : []).filter(
+        (f: Fiado) => f && f.id && !fiadosEliminados.has(f.id)
       );
 
       return {
@@ -73,7 +110,7 @@ export class HttpAgendaStorage implements IAgendaStorage {
         fechaRespaldo: parsed.fechaRespaldo || new Date().toISOString(),
         citas: citasLimpias,
         servicios: Array.isArray(parsed.servicios) ? parsed.servicios : [],
-        fiados: Array.isArray(parsed.fiados) ? parsed.fiados : [],
+        fiados: fiadosLimpios,
       };
     } catch (e) {
       console.warn('[HttpAgendaStorage] Error leyendo de almacenamiento local:', e);
@@ -130,8 +167,9 @@ export class HttpAgendaStorage implements IAgendaStorage {
         }
 
         // Si el servidor respondió con datos
+        // Si el servidor respondió con datos
         if (serverData && !serverData.empty) {
-          // 1. Sincronizar lápidas (tombstones): si otra pestaña o acceso directo eliminó una cita, registrarlo
+          // 1. Sincronizar lápidas (tombstones): si otra pestaña o acceso directo eliminó una cita o fiado, registrarlo
           const serverEliminadas = Array.isArray(serverData.citasEliminadas)
             ? serverData.citasEliminadas
             : [];
@@ -140,9 +178,18 @@ export class HttpAgendaStorage implements IAgendaStorage {
             eliminadas = this.getEliminadas();
           }
 
+          const serverFiadosEliminados = Array.isArray(serverData.fiadosEliminados)
+            ? serverData.fiadosEliminados
+            : [];
+          if (serverFiadosEliminados.length > 0) {
+            this.registrarFiadosEliminados(serverFiadosEliminados);
+          }
+          const fiadosEliminados = this.getFiadosEliminados();
+
           const rawServerCitas: Cita[] = Array.isArray(serverData.citas) ? serverData.citas : [];
           const serverCitas = rawServerCitas.filter((c) => c && c.id && !eliminadas.has(c.id));
-          const serverFiados: Fiado[] = Array.isArray(serverData.fiados) ? serverData.fiados : [];
+          const rawServerFiados: Fiado[] = Array.isArray(serverData.fiados) ? serverData.fiados : [];
+          const serverFiados = rawServerFiados.filter((f) => f && f.id && !fiadosEliminados.has(f.id));
           const serverServicios = Array.isArray(serverData.servicios) ? serverData.servicios : [];
 
           // 2. Fusión unificada por ID para mantener sincronizados el acceso directo y Safari:
@@ -169,10 +216,12 @@ export class HttpAgendaStorage implements IAgendaStorage {
           // 3. Fusión de fiados
           const fiadosMap = new Map<string, Fiado>();
           serverFiados.forEach((f) => {
-            if (f && f.id) fiadosMap.set(f.id, f);
+            if (f && f.id && !fiadosEliminados.has(f.id)) {
+              fiadosMap.set(f.id, f);
+            }
           });
           (localData?.fiados || []).forEach((f) => {
-            if (f && f.id && !fiadosMap.has(f.id)) {
+            if (f && f.id && !fiadosEliminados.has(f.id) && !fiadosMap.has(f.id)) {
               fiadosMap.set(f.id, f);
             }
           });
@@ -184,6 +233,7 @@ export class HttpAgendaStorage implements IAgendaStorage {
             servicios: serverServicios.length > 0 ? serverServicios : (localData?.servicios || []),
             fiados: Array.from(fiadosMap.values()),
             citasEliminadas: Array.from(eliminadas).slice(-500),
+            fiadosEliminados: Array.from(fiadosEliminados).slice(-500),
           };
 
           this.guardarEnLocalStorage(resultado);
@@ -208,7 +258,7 @@ export class HttpAgendaStorage implements IAgendaStorage {
    * Guarda inmediatamente en el teléfono y luego replica en el servidor en la nube
    */
   async guardar(datos: RespaldoCompleto): Promise<boolean> {
-    // 1. Detectar si alguna cita fue eliminada respecto a la versión anterior en caché
+    // 1. Detectar si alguna cita o fiado fue eliminado respecto a la versión anterior en caché
     try {
       const previo = this.leerDeLocalStorage();
       if (previo && Array.isArray(previo.citas)) {
@@ -221,15 +271,28 @@ export class HttpAgendaStorage implements IAgendaStorage {
           this.registrarEliminadas(eliminadosAhora);
         }
       }
+      if (previo && Array.isArray(previo.fiados)) {
+        const nuevosFiadosIds = new Set((datos.fiados || []).map((f) => f.id));
+        const fiadosEliminadosAhora = previo.fiados
+          .filter((f) => f && f.id && !nuevosFiadosIds.has(f.id))
+          .map((f) => f.id);
+
+        if (fiadosEliminadosAhora.length > 0) {
+          this.registrarFiadosEliminados(fiadosEliminadosAhora);
+        }
+      }
     } catch (_) {}
 
-    // 2. Filtrar cualquier cita que esté en la lista de eliminadas
+    // 2. Filtrar cualquier cita o fiado que esté en la lista de eliminadas
     const eliminadas = this.getEliminadas();
+    const fiadosEliminados = this.getFiadosEliminados();
     const datosLimpios: RespaldoCompleto = {
       ...datos,
       fechaRespaldo: new Date().toISOString(),
       citas: (datos.citas || []).filter((c) => c && c.id && !eliminadas.has(c.id)),
+      fiados: (datos.fiados || []).filter((f) => f && f.id && !fiadosEliminados.has(f.id)),
       citasEliminadas: Array.from(eliminadas).slice(-500),
+      fiadosEliminados: Array.from(fiadosEliminados).slice(-500),
     };
 
     // 3. Guardar de inmediato en la memoria física del teléfono (0ms latencia)

@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "fechaRespaldo": "2026-10-23T16:28:04.393Z",
+  "fechaRespaldo": "2026-10-23T17:54:25.880Z",
   "citas": [
     {
       "clienteNombre": "Julio Tiburcio",
@@ -507,7 +507,7 @@
       "hora": "08:45",
       "duracionMinutos": 30,
       "precioCobradoRD": 400,
-      "estado": "pendiente",
+      "estado": "en_atencion",
       "esBloqueo": false,
       "id": "cita-1792759533668",
       "creadoEn": "2026-10-23T12:45:33.668Z"
@@ -708,15 +708,25 @@
       "fecha": "2026-10-18",
       "saldado": false,
       "notas": "4 corte",
-      "id": "fiado-1792302495405"
+      "id": "fiado-1792302495405",
+      "montoOriginalRD": 2400,
+      "abonos": [
+        {
+          "id": "abono-1792773356655",
+          "montoRD": 800,
+          "fecha": "2026-10-23",
+          "creadoEn": "2026-10-23T16:35:56.655Z"
+        }
+      ]
     },
     {
       "clienteNombre": "Enyer",
-      "montoRD": 4750,
+      "montoRD": 5150,
       "concepto": "Corte de cabello",
       "fecha": "2026-10-18",
       "saldado": false,
-      "id": "fiado-1792341513415"
+      "id": "fiado-1792341513415",
+      "montoOriginalRD": 5150
     },
     {
       "clienteNombre": "Michell",
@@ -751,20 +761,14 @@
       "id": "fiado-1792341680526"
     },
     {
-      "clienteNombre": "Chubi",
-      "montoRD": 800,
-      "concepto": "Corte de cabello",
-      "fecha": "2026-10-18",
-      "saldado": false,
-      "id": "fiado-1792352872757"
-    },
-    {
       "clienteNombre": "Ezequiel",
-      "montoRD": 400,
+      "montoRD": 750,
       "concepto": "Corte de cabello",
       "fecha": "2026-10-22",
       "saldado": false,
-      "id": "fiado-1792680820012"
+      "id": "fiado-1792680820012",
+      "montoOriginalRD": 750,
+      "notas": "Sobre de miel"
     },
     {
       "clienteNombre": "Chumacle",
@@ -774,15 +778,6 @@
       "saldado": false,
       "notas": "Sobre de miel",
       "id": "fiado-1792680907424"
-    },
-    {
-      "clienteNombre": "Ezequiel",
-      "montoRD": 350,
-      "concepto": "Corte de cabello",
-      "fecha": "2026-10-22",
-      "saldado": false,
-      "notas": "Sobre de miel",
-      "id": "fiado-1792680924238"
     },
     {
       "clienteNombre": "Domingo",
@@ -839,6 +834,14 @@
       "fecha": "2026-10-22",
       "saldado": false,
       "id": "fiado-1792708550205"
+    },
+    {
+      "clienteNombre": "Larry",
+      "montoRD": 1000,
+      "concepto": "Corte de cabello",
+      "fecha": "2026-10-23",
+      "saldado": false,
+      "id": "fiado-1792775468212"
     }
   ],
   "citasEliminadas": [
@@ -870,5 +873,10 @@
     "cita-1792693831639",
     "cita-1792631762408",
     "cita-1792631845422"
+  ],
+  "fiadosEliminados": [
+    "fiado-1792352872757",
+    "fiado-1792680924238",
+    "fiado-1792777328318"
   ]
 }

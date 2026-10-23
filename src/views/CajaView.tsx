@@ -5,6 +5,7 @@ import {
   formatearMonedaRD,
   getFechaHoyLocal,
   formatearFechaCorta,
+  normalizarTexto,
 } from '../utils/formatters';
 import {
   Calendar,
@@ -459,12 +460,48 @@ export const CajaView: React.FC = () => {
                 <input
                   type="text"
                   required
+                  list="lista-clientes-fiados"
                   placeholder="Ej. Manuel Tejada"
                   value={nuevoNombre}
                   onChange={(e) => setNuevoNombre(e.target.value)}
                   className="w-full bg-stone-50 border border-stone-200 focus:border-amber-700 rounded-xl px-3 py-2 text-sm text-zinc-900 outline-none"
                 />
+                <datalist id="lista-clientes-fiados">
+                  {fiadosPendientes.map((f) => (
+                    <option key={f.id} value={f.clienteNombre} />
+                  ))}
+                </datalist>
               </div>
+
+              {/* Notificación si el cliente ya tiene una cuenta activa */}
+              {(() => {
+                const fiadoExistente = fiadosPendientes.find(
+                  (f) =>
+                    nuevoNombre.trim().length > 1 &&
+                    normalizarTexto(f.clienteNombre) === normalizarTexto(nuevoNombre)
+                );
+                if (!fiadoExistente) return null;
+
+                return (
+                  <div className="bg-amber-50 border border-amber-300 rounded-2xl p-3 text-xs text-amber-950 flex items-start gap-2.5 shadow-sm">
+                    <AlertCircle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-amber-900">
+                        Cuenta existente de {fiadoExistente.clienteNombre}
+                      </div>
+                      <div className="text-zinc-600 mt-0.5">
+                        Saldo actual:{' '}
+                        <strong className="text-zinc-900">{formatearMonedaRD(fiadoExistente.montoRD)}</strong>.
+                        {' '}Se le sumarán{' '}
+                        <strong className="text-amber-800">+{formatearMonedaRD(Number(nuevoMonto) || 0)}</strong>.
+                      </div>
+                      <div className="mt-1 font-black text-amber-900">
+                        Nuevo saldo total: {formatearMonedaRD(fiadoExistente.montoRD + (Number(nuevoMonto) || 0))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -523,12 +560,27 @@ export const CajaView: React.FC = () => {
               </div>
 
               <div className="pt-2">
-                <button
-                  type="submit"
-                  className="w-full bg-amber-800 hover:bg-amber-900 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all cursor-pointer"
-                >
-                  Guardar Fiado
-                </button>
+                {(() => {
+                  const fiadoExistente = fiadosPendientes.find(
+                    (f) =>
+                      nuevoNombre.trim().length > 1 &&
+                      normalizarTexto(f.clienteNombre) === normalizarTexto(nuevoNombre)
+                  );
+
+                  return (
+                    <button
+                      type="submit"
+                      className="w-full bg-amber-800 hover:bg-amber-900 text-white font-bold py-2.5 px-4 rounded-xl shadow-sm transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>
+                        {fiadoExistente
+                          ? `Sumar a cuenta de ${fiadoExistente.clienteNombre} (+${formatearMonedaRD(Number(nuevoMonto) || 0)})`
+                          : 'Guardar Fiado'}
+                      </span>
+                    </button>
+                  );
+                })()}
               </div>
             </form>
           </div>

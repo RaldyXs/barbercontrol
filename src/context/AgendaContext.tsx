@@ -10,7 +10,7 @@ import {
   AgendaContextType,
 } from '../types';
 import { SERVICIOS_INICIALES } from '../data/serviciosIniciales';
-import { getFechaHoyLocal } from '../utils/formatters';
+import { getFechaHoyLocal, normalizarTexto } from '../utils/formatters';
 import { IAgendaStorage } from '../services/storage.interface';
 import { defaultStorage } from '../services/httpAgendaStorage';
 import { CajaCalculator } from '../services/cajaCalculator';
@@ -76,12 +76,21 @@ export const AgendaProvider: React.FC<AgendaProviderProps> = ({
   ) => {
     try {
       setGuardandoServidor(true);
+      let fiadosEliminadosArr: string[] = [];
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          const raw = window.localStorage.getItem('barbercontrol_fiados_eliminados_v1');
+          fiadosEliminadosArr = raw ? JSON.parse(raw) : [];
+        }
+      } catch (_) {}
+
       await storage.guardar({
         version: '1.0',
         fechaRespaldo: new Date().toISOString(),
         citas: citasActuales,
         servicios: serviciosActuales,
         fiados: fiadosActuales,
+        fiadosEliminados: fiadosEliminadosArr,
       });
     } finally {
       setGuardandoServidor(false);
@@ -243,11 +252,54 @@ export const AgendaProvider: React.FC<AgendaProviderProps> = ({
 
   // --- Operaciones de Fiados (IFiadosOperations) ---
   const agregarFiado = (nuevoFiado: Omit<Fiado, 'id'>) => {
-    const fiadoCreado: Fiado = {
-      ...nuevoFiado,
-      id: 'fiado-' + Date.now(),
-    };
-    setFiados((prev) => [fiadoCreado, ...prev]);
+    const nombreNormalizado = normalizarTexto(nuevoFiado.clienteNombre);
+    const montoASumar = Number(nuevoFiado.montoRD) || 0;
+
+    setFiados((prev) => {
+      // Buscar si el cliente ya tiene una cuenta activa (pendiente / no saldada)
+      const indexExistente = prev.findIndex(
+        (f) => !f.saldado && normalizarTexto(f.clienteNombre) === nombreNormalizado
+      );
+
+      if (indexExistente !== -1) {
+        // Sumar al saldo de la cuenta existente en vez de crear una duplicada
+        const existente = prev[indexExistente];
+        const totalAbonado = existente.abonos?.reduce((sum, a) => sum + (a.montoRD || 0), 0) || 0;
+        const montoOriginalPrevio = existente.montoOriginalRD ?? (existente.montoRD + totalAbonado);
+
+        const conceptoUnificado =
+          existente.concepto && nuevoFiado.concepto && existente.concepto !== nuevoFiado.concepto
+            ? `${existente.concepto} + ${nuevoFiado.concepto}`
+            : (existente.concepto || nuevoFiado.concepto);
+
+        const notasUnificadas = [existente.notas, nuevoFiado.notas]
+          .filter(Boolean)
+          .join(' | ');
+
+        const fiadoActualizado: Fiado = {
+          ...existente,
+          montoRD: existente.montoRD + montoASumar,
+          montoOriginalRD: montoOriginalPrevio + montoASumar,
+          concepto: conceptoUnificado,
+          notas: notasUnificadas || undefined,
+          clienteTelefono: nuevoFiado.clienteTelefono || existente.clienteTelefono,
+          saldado: false,
+        };
+
+        const nuevaLista = [...prev];
+        nuevaLista[indexExistente] = fiadoActualizado;
+        return nuevaLista;
+      }
+
+      // Si no existe cuenta activa previa, crear nueva
+      const fiadoCreado: Fiado = {
+        ...nuevoFiado,
+        id: 'fiado-' + Date.now(),
+        montoRD: montoASumar,
+        montoOriginalRD: nuevoFiado.montoOriginalRD ?? montoASumar,
+      };
+      return [fiadoCreado, ...prev];
+    });
   };
 
   const toggleSaldarFiado = (fiadoId: string) => {
@@ -257,6 +309,17 @@ export const AgendaProvider: React.FC<AgendaProviderProps> = ({
   };
 
   const eliminarFiado = (fiadoId: string) => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const raw = window.localStorage.getItem('barbercontrol_fiados_eliminados_v1');
+        const arr = raw ? JSON.parse(raw) : [];
+        if (!arr.includes(fiadoId)) {
+          arr.push(fiadoId);
+          window.localStorage.setItem('barbercontrol_fiados_eliminados_v1', JSON.stringify(arr));
+        }
+      }
+    } catch (_) {}
+
     setFiados((prev) => prev.filter((f) => f.id !== fiadoId));
   };
 
