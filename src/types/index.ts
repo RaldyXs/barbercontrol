@@ -32,6 +32,18 @@ export interface AbonoFiado {
   notas?: string;
 }
 
+export type TipoMovimientoFiado = 'cargo' | 'abono';
+
+export interface MovimientoFiado {
+  id: string;
+  tipo: TipoMovimientoFiado; // 'cargo' (deuda sumada) o 'abono' (pago recibido)
+  montoRD: number;
+  concepto?: string;
+  fecha: string; // YYYY-MM-DD
+  creadoEn: string; // ISO
+  notas?: string;
+}
+
 export interface Fiado {
   id: string;
   clienteNombre: string;
@@ -43,6 +55,7 @@ export interface Fiado {
   saldado: boolean;
   notas?: string;
   abonos?: AbonoFiado[];
+  movimientos?: MovimientoFiado[];
 }
 
 export interface ClienteFrecuente {

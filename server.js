@@ -135,7 +135,24 @@ const server = http.createServer((req, res) => {
               if (f && f.id && !fiadosEliminadosSet.has(f.id)) fiadosMap.set(f.id, f);
             });
             (Array.isArray(incoming.fiados) ? incoming.fiados : []).forEach((f) => {
-              if (f && f.id && !fiadosEliminadosSet.has(f.id)) fiadosMap.set(f.id, f);
+              if (f && f.id && !fiadosEliminadosSet.has(f.id)) {
+                if (fiadosMap.has(f.id)) {
+                  const prevFiado = fiadosMap.get(f.id);
+                  // Si el fiado entrante no tiene movimientos pero el existente sí, preservarlos
+                  if (
+                    (!f.movimientos || f.movimientos.length === 0) &&
+                    Array.isArray(prevFiado.movimientos) &&
+                    prevFiado.movimientos.length > 0
+                  ) {
+                    f = { ...f, movimientos: prevFiado.movimientos };
+                  }
+                  // Preservar montoOriginalRD si no viene
+                  if (f.montoOriginalRD === undefined && prevFiado.montoOriginalRD !== undefined) {
+                    f = { ...f, montoOriginalRD: prevFiado.montoOriginalRD };
+                  }
+                }
+                fiadosMap.set(f.id, f);
+              }
             });
 
             finalData = {

@@ -717,6 +717,31 @@
           "fecha": "2026-10-23",
           "creadoEn": "2026-10-23T16:35:56.655Z"
         }
+      ],
+      "movimientos": [
+        {
+          "id": "cargo-chubi-1",
+          "tipo": "cargo",
+          "montoRD": 1600,
+          "concepto": "4 corte",
+          "fecha": "2026-10-18",
+          "creadoEn": "2026-10-18T20:00:00.000Z"
+        },
+        {
+          "id": "cargo-chubi-2",
+          "tipo": "cargo",
+          "montoRD": 800,
+          "concepto": "2 corte",
+          "fecha": "2026-10-18",
+          "creadoEn": "2026-10-18T20:05:00.000Z"
+        },
+        {
+          "id": "abono-1792773356655",
+          "tipo": "abono",
+          "montoRD": 800,
+          "fecha": "2026-10-23",
+          "creadoEn": "2026-10-23T16:35:56.655Z"
+        }
       ]
     },
     {
@@ -726,7 +751,25 @@
       "fecha": "2026-10-18",
       "saldado": false,
       "id": "fiado-1792341513415",
-      "montoOriginalRD": 5150
+      "montoOriginalRD": 5150,
+      "movimientos": [
+        {
+          "id": "cargo-enyer-1",
+          "tipo": "cargo",
+          "montoRD": 4750,
+          "concepto": "Corte de cabello",
+          "fecha": "2026-10-18",
+          "creadoEn": "2026-10-18T20:00:00.000Z"
+        },
+        {
+          "id": "cargo-enyer-2",
+          "tipo": "cargo",
+          "montoRD": 400,
+          "concepto": "Corte de cabello",
+          "fecha": "2026-10-18",
+          "creadoEn": "2026-10-18T20:05:00.000Z"
+        }
+      ]
     },
     {
       "clienteNombre": "Michell",
@@ -768,7 +811,25 @@
       "saldado": false,
       "id": "fiado-1792680820012",
       "montoOriginalRD": 750,
-      "notas": "Sobre de miel"
+      "notas": "Sobre de miel",
+      "movimientos": [
+        {
+          "id": "cargo-ezequiel-1",
+          "tipo": "cargo",
+          "montoRD": 400,
+          "concepto": "Corte de cabello",
+          "fecha": "2026-10-22",
+          "creadoEn": "2026-10-22T20:00:00.000Z"
+        },
+        {
+          "id": "cargo-ezequiel-2",
+          "tipo": "cargo",
+          "montoRD": 350,
+          "concepto": "Sobre de miel",
+          "fecha": "2026-10-22",
+          "creadoEn": "2026-10-22T20:05:00.000Z"
+        }
+      ]
     },
     {
       "clienteNombre": "Chumacle",

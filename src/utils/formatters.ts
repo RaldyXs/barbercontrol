@@ -1,3 +1,5 @@
+import { Fiado, MovimientoFiado } from '../types';
+
 // Formato estándar de Pesos Dominicanos (RD$ 1,250.00)
 export function formatearMonedaRD(monto: number): string {
   return new Intl.NumberFormat('es-DO', {
@@ -119,4 +121,41 @@ export function normalizarTexto(texto: string): string {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
+}
+
+// Obtener o reconstruir el historial general de movimientos (cargos y abonos) de una cuenta
+export function obtenerMovimientosFiado(fiado: Fiado): MovimientoFiado[] {
+  if (Array.isArray(fiado.movimientos) && fiado.movimientos.length > 0) {
+    return fiado.movimientos;
+  }
+
+  // Retrocompatibilidad automática si aún no tiene array de movimientos
+  const lista: MovimientoFiado[] = [];
+  const totalAbonado = fiado.abonos?.reduce((sum, a) => sum + (a.montoRD || 0), 0) || 0;
+  const deudaInicial = fiado.montoOriginalRD ?? (fiado.montoRD + totalAbonado);
+
+  lista.push({
+    id: `cargo-init-${fiado.id}`,
+    tipo: 'cargo',
+    montoRD: deudaInicial,
+    concepto: fiado.concepto || 'Apertura de cuenta',
+    fecha: fiado.fecha || getFechaHoyLocal(),
+    creadoEn: fiado.fecha ? `${fiado.fecha}T00:00:00.000Z` : new Date().toISOString(),
+    notas: fiado.notas,
+  });
+
+  if (Array.isArray(fiado.abonos)) {
+    fiado.abonos.forEach((a) => {
+      lista.push({
+        id: a.id,
+        tipo: 'abono',
+        montoRD: a.montoRD,
+        fecha: a.fecha,
+        creadoEn: a.creadoEn,
+        notas: a.notas,
+      });
+    });
+  }
+
+  return lista;
 }

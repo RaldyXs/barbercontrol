@@ -6,6 +6,7 @@ import {
   getFechaHoyLocal,
   formatearFechaCorta,
   normalizarTexto,
+  obtenerMovimientosFiado,
 } from '../utils/formatters';
 import {
   Calendar,
@@ -253,9 +254,11 @@ export const CajaView: React.FC = () => {
           {/* Lista de Fiados */}
           <div className="space-y-3">
             {fiados.map((fiado) => {
-              const abonos = Array.isArray(fiado.abonos) ? fiado.abonos : [];
+              const movimientos = obtenerMovimientosFiado(fiado);
+              const cargos = movimientos.filter((m) => m.tipo === 'cargo');
+              const abonos = movimientos.filter((m) => m.tipo === 'abono');
+              const totalCargado = cargos.reduce((sum, c) => sum + (c.montoRD || 0), 0);
               const totalAbonado = abonos.reduce((sum, a) => sum + (a.montoRD || 0), 0);
-              const deudaOriginal = fiado.montoOriginalRD ?? (fiado.montoRD + totalAbonado);
               const estaExpandido = !!abonosExpandidos[fiado.id];
 
               return (
@@ -296,16 +299,25 @@ export const CajaView: React.FC = () => {
                         </p>
                       )}
 
-                      {/* Desglose de Deuda / Abonos si ya ha realizado abonos */}
-                      {totalAbonado > 0 && (
+                      {/* Desglose de Deuda / Abonos si hay múltiples cargos o abonos */}
+                      {(cargos.length > 1 || totalAbonado > 0) && (
                         <div className="mt-2 text-[11px] flex items-center gap-2 text-zinc-500 flex-wrap">
-                          <span>
-                            Original: <strong className="text-zinc-700">{formatearMonedaRD(deudaOriginal)}</strong>
-                          </span>
-                          <span>•</span>
-                          <span>
-                            Abonado: <strong className="text-emerald-700 font-bold">{formatearMonedaRD(totalAbonado)}</strong>
-                          </span>
+                          {cargos.length > 1 && (
+                            <span className="bg-amber-100 text-amber-900 border border-amber-300/70 px-1.5 py-0.5 rounded font-bold text-[10px]">
+                              {cargos.length} cargos sumados
+                            </span>
+                          )}
+                          {totalAbonado > 0 && (
+                            <>
+                              <span>
+                                Total adeudado: <strong className="text-zinc-700">{formatearMonedaRD(totalCargado)}</strong>
+                              </span>
+                              <span>•</span>
+                              <span>
+                                Abonado: <strong className="text-emerald-700 font-bold">-{formatearMonedaRD(totalAbonado)}</strong>
+                              </span>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
@@ -365,16 +377,19 @@ export const CajaView: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Sección de Historial de Abonos Desplegable */}
-                  {abonos.length > 0 && (
+                  {/* Sección de Historial General (Cargos y Abonos) Desplegable */}
+                  {movimientos.length > 1 && (
                     <div className="mt-3 pt-2.5 border-t border-stone-100">
                       <button
                         type="button"
                         onClick={() => toggleExpandirAbonos(fiado.id)}
-                        className="text-xs font-semibold text-zinc-600 hover:text-zinc-900 flex items-center gap-1.5 cursor-pointer py-0.5"
+                        className="text-xs font-semibold text-zinc-700 hover:text-zinc-900 flex items-center gap-1.5 cursor-pointer py-0.5 group"
                       >
-                        <History className="w-3.5 h-3.5 text-amber-700" />
-                        <span>Historial de abonos ({abonos.length})</span>
+                        <History className="w-3.5 h-3.5 text-amber-700 group-hover:rotate-12 transition-transform" />
+                        <span className="font-bold">Historial general</span>
+                        <span className="text-[11px] bg-stone-100 text-zinc-600 px-1.5 py-0.5 rounded-full font-medium">
+                          {movimientos.length} movimientos
+                        </span>
                         {estaExpandido ? (
                           <ChevronUp className="w-3.5 h-3.5 text-zinc-400" />
                         ) : (
@@ -383,48 +398,91 @@ export const CajaView: React.FC = () => {
                       </button>
 
                       {estaExpandido && (
-                        <div className="mt-2 bg-stone-50 rounded-xl p-2.5 space-y-1.5 border border-stone-100">
-                          {abonos.map((abono) => (
-                            <div
-                              key={abono.id}
-                              className="flex items-center justify-between text-xs py-1 px-1.5 hover:bg-white rounded-lg transition-colors"
-                            >
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold text-zinc-700">
-                                  {formatearFechaCorta(abono.fecha)}
-                                </span>
-                                {abono.notas && (
-                                  <span className="text-[11px] bg-stone-200/70 text-zinc-600 px-1.5 py-0.5 rounded">
-                                    {abono.notas}
+                        <div className="mt-2.5 bg-stone-50 rounded-xl p-2.5 space-y-1.5 border border-stone-200/80">
+                          {movimientos.map((mov, idx) => {
+                            const esCargo = mov.tipo === 'cargo';
+                            return (
+                              <div
+                                key={mov.id || `mov-${idx}`}
+                                className={`flex items-center justify-between text-xs py-1.5 px-2 rounded-lg transition-colors border ${
+                                  esCargo
+                                    ? 'bg-amber-50/70 border-amber-200/70'
+                                    : 'bg-emerald-50/70 border-emerald-200/70'
+                                }`}
+                              >
+                                <div className="flex items-center gap-2 min-w-0 pr-2">
+                                  <span
+                                    className={`w-4 h-4 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0 ${
+                                      esCargo
+                                        ? 'bg-amber-200 text-amber-900'
+                                        : 'bg-emerald-200 text-emerald-900'
+                                    }`}
+                                  >
+                                    {esCargo ? '+' : '-'}
                                   </span>
-                                )}
-                              </div>
 
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-emerald-700">
-                                  +{formatearMonedaRD(abono.montoRD)}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (
-                                      confirm(
-                                        `¿Eliminar este abono de ${formatearMonedaRD(
-                                          abono.montoRD
-                                        )} del ${formatearFechaCorta(abono.fecha)}? Se sumará de nuevo a la deuda.`
-                                      )
-                                    ) {
-                                      eliminarAbono(fiado.id, abono.id);
-                                    }
-                                  }}
-                                  className="text-zinc-300 hover:text-rose-600 transition-colors p-0.5 cursor-pointer"
-                                  title="Eliminar este abono"
-                                >
-                                  <X className="w-3.5 h-3.5" />
-                                </button>
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="font-bold text-zinc-800">
+                                        {esCargo
+                                          ? idx === 0
+                                            ? 'Apertura de cuenta'
+                                            : 'Se le sumó al fiado'
+                                          : 'Abono a cuenta'}
+                                      </span>
+                                      <span className="text-[11px] text-zinc-400">
+                                        • {formatearFechaCorta(mov.fecha)}
+                                      </span>
+                                    </div>
+
+                                    {(mov.concepto || mov.notas) && (
+                                      <div className="text-[11px] text-zinc-600 truncate">
+                                        {mov.concepto ? mov.concepto : ''}
+                                        {mov.concepto && mov.notas ? ' — ' : ''}
+                                        {mov.notas ? `"${mov.notas}"` : ''}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <span
+                                    className={`font-black text-xs px-2 py-0.5 rounded ${
+                                      esCargo
+                                        ? 'text-amber-900 bg-amber-100'
+                                        : 'text-emerald-800 bg-emerald-100'
+                                    }`}
+                                  >
+                                    {esCargo ? '+' : '-'}
+                                    {formatearMonedaRD(mov.montoRD)}
+                                  </span>
+
+                                  {!esCargo && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (
+                                          confirm(
+                                            `¿Eliminar este abono de ${formatearMonedaRD(
+                                              mov.montoRD
+                                            )} del ${formatearFechaCorta(
+                                              mov.fecha
+                                            )}? Se sumará de nuevo a la deuda.`
+                                          )
+                                        ) {
+                                          eliminarAbono(fiado.id, mov.id);
+                                        }
+                                      }}
+                                      className="text-zinc-300 hover:text-rose-600 transition-colors p-0.5 cursor-pointer"
+                                      title="Eliminar este abono"
+                                    >
+                                      <X className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </div>

@@ -7,10 +7,15 @@ import {
   ResumenCaja,
   Fiado,
   AbonoFiado,
+  MovimientoFiado,
   AgendaContextType,
 } from '../types';
 import { SERVICIOS_INICIALES } from '../data/serviciosIniciales';
-import { getFechaHoyLocal, normalizarTexto } from '../utils/formatters';
+import {
+  getFechaHoyLocal,
+  normalizarTexto,
+  obtenerMovimientosFiado,
+} from '../utils/formatters';
 import { IAgendaStorage } from '../services/storage.interface';
 import { defaultStorage } from '../services/httpAgendaStorage';
 import { CajaCalculator } from '../services/cajaCalculator';
@@ -254,6 +259,8 @@ export const AgendaProvider: React.FC<AgendaProviderProps> = ({
   const agregarFiado = (nuevoFiado: Omit<Fiado, 'id'>) => {
     const nombreNormalizado = normalizarTexto(nuevoFiado.clienteNombre);
     const montoASumar = Number(nuevoFiado.montoRD) || 0;
+    const hoy = getFechaHoyLocal();
+    const isoNow = new Date().toISOString();
 
     setFiados((prev) => {
       // Buscar si el cliente ya tiene una cuenta activa (pendiente / no saldada)
@@ -276,6 +283,17 @@ export const AgendaProvider: React.FC<AgendaProviderProps> = ({
           .filter(Boolean)
           .join(' | ');
 
+        const movsPrevios = obtenerMovimientosFiado(existente);
+        const nuevoMovimientoCargo: MovimientoFiado = {
+          id: 'cargo-' + Date.now(),
+          tipo: 'cargo',
+          montoRD: montoASumar,
+          concepto: nuevoFiado.concepto || 'Corte sumado',
+          fecha: hoy,
+          creadoEn: isoNow,
+          notas: nuevoFiado.notas?.trim() || undefined,
+        };
+
         const fiadoActualizado: Fiado = {
           ...existente,
           montoRD: existente.montoRD + montoASumar,
@@ -284,6 +302,7 @@ export const AgendaProvider: React.FC<AgendaProviderProps> = ({
           notas: notasUnificadas || undefined,
           clienteTelefono: nuevoFiado.clienteTelefono || existente.clienteTelefono,
           saldado: false,
+          movimientos: [...movsPrevios, nuevoMovimientoCargo],
         };
 
         const nuevaLista = [...prev];
@@ -291,12 +310,24 @@ export const AgendaProvider: React.FC<AgendaProviderProps> = ({
         return nuevaLista;
       }
 
-      // Si no existe cuenta activa previa, crear nueva
+      // Si no existe cuenta activa previa, crear nueva con su cargo inicial
+      const idFiado = 'fiado-' + Date.now();
+      const movimientoInicial: MovimientoFiado = {
+        id: 'cargo-init-' + Date.now(),
+        tipo: 'cargo',
+        montoRD: montoASumar,
+        concepto: nuevoFiado.concepto || 'Apertura de cuenta',
+        fecha: hoy,
+        creadoEn: isoNow,
+        notas: nuevoFiado.notas?.trim() || undefined,
+      };
+
       const fiadoCreado: Fiado = {
         ...nuevoFiado,
-        id: 'fiado-' + Date.now(),
+        id: idFiado,
         montoRD: montoASumar,
         montoOriginalRD: nuevoFiado.montoOriginalRD ?? montoASumar,
+        movimientos: [movimientoInicial],
       };
       return [fiadoCreado, ...prev];
     });
@@ -336,15 +367,28 @@ export const AgendaProvider: React.FC<AgendaProviderProps> = ({
 
         const totalAbonadoPrevio = f.abonos?.reduce((acc, a) => acc + (a.montoRD || 0), 0) || 0;
         const montoOriginal = f.montoOriginalRD ?? (f.montoRD + totalAbonadoPrevio);
+        const fechaActual = fechaAbono || getFechaHoyLocal();
+        const isoNow = new Date().toISOString();
+        const abonoId = 'abono-' + Date.now();
 
         const nuevoAbono: AbonoFiado = {
-          id: 'abono-' + Date.now(),
+          id: abonoId,
           montoRD: montoAbono,
-          fecha: fechaAbono || getFechaHoyLocal(),
-          creadoEn: new Date().toISOString(),
+          fecha: fechaActual,
+          creadoEn: isoNow,
           notas: notas?.trim() || undefined,
         };
 
+        const nuevoMovimientoAbono: MovimientoFiado = {
+          id: abonoId,
+          tipo: 'abono',
+          montoRD: montoAbono,
+          fecha: fechaActual,
+          creadoEn: isoNow,
+          notas: notas?.trim() || undefined,
+        };
+
+        const movsPrevios = obtenerMovimientosFiado(f);
         const abonosActuales = f.abonos ? [...f.abonos, nuevoAbono] : [nuevoAbono];
         const nuevoMontoRD = Math.max(0, f.montoRD - montoAbono);
         const estaSaldado = nuevoMontoRD === 0;
@@ -355,6 +399,7 @@ export const AgendaProvider: React.FC<AgendaProviderProps> = ({
           montoRD: nuevoMontoRD,
           saldado: estaSaldado,
           abonos: abonosActuales,
+          movimientos: [...movsPrevios, nuevoMovimientoAbono],
         };
       })
     );
@@ -363,12 +408,17 @@ export const AgendaProvider: React.FC<AgendaProviderProps> = ({
   const eliminarAbono = (fiadoId: string, abonoId: string) => {
     setFiados((prev) =>
       prev.map((f) => {
-        if (f.id !== fiadoId || !f.abonos) return f;
+        if (f.id !== fiadoId) return f;
 
-        const abonoAEliminar = f.abonos.find((a) => a.id === abonoId);
+        const abonoAEliminar =
+          f.abonos?.find((a) => a.id === abonoId) ||
+          f.movimientos?.find((m) => m.id === abonoId && m.tipo === 'abono');
         if (!abonoAEliminar) return f;
 
-        const abonosFiltrados = f.abonos.filter((a) => a.id !== abonoId);
+        const abonosFiltrados = (f.abonos || []).filter((a) => a.id !== abonoId);
+        const movsActuales = obtenerMovimientosFiado(f);
+        const movsFiltrados = movsActuales.filter((m) => m.id !== abonoId);
+
         const nuevoMontoRD = f.montoRD + abonoAEliminar.montoRD;
         const estaSaldado = nuevoMontoRD === 0;
 
@@ -377,6 +427,7 @@ export const AgendaProvider: React.FC<AgendaProviderProps> = ({
           montoRD: nuevoMontoRD,
           saldado: estaSaldado,
           abonos: abonosFiltrados,
+          movimientos: movsFiltrados,
         };
       })
     );
