@@ -53,9 +53,9 @@ export class HttpAgendaStorage implements IAgendaStorage {
   }
 
   /**
-   * Lee la copia física de seguridad guardada en el teléfono/navegador
+   * Lee la copia física de seguridad guardada en el teléfono/navegador (0ms latencia)
    */
-  private leerDeLocalStorage(): RespaldoCompleto | null {
+  public leerDeLocalStorage(): RespaldoCompleto | null {
     try {
       if (typeof window === 'undefined' || !window.localStorage) return null;
       const cached = window.localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -103,12 +103,19 @@ export class HttpAgendaStorage implements IAgendaStorage {
     let eliminadas = this.getEliminadas();
 
     try {
-      // Prevenir cualquier caché agresiva de Safari iOS mediante timestamp y no-store
+      // Timeout de 3.5 segundos: si Cloudflare o Render tardan, mostrar datos del teléfono de inmediato
+      const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), 3500) : null;
+
       const resp = await fetch(`${this.endpoint}?_t=${Date.now()}`, {
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache, no-store' },
+        signal: controller?.signal,
       });
-      if (resp.ok) {
+
+      if (timeoutId) clearTimeout(timeoutId);
+
+      if (resp && resp.ok) {
         const serverData = await resp.json();
 
         // Si el servidor está vacío o reiniciado

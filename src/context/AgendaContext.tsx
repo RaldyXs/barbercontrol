@@ -30,9 +30,36 @@ export const AgendaProvider: React.FC<AgendaProviderProps> = ({
   children,
   storage = defaultStorage,
 }) => {
-  const [servicios, setServicios] = useState<Servicio[]>(SERVICIOS_INICIALES);
-  const [citas, setCitas] = useState<Cita[]>([]);
-  const [fiados, setFiados] = useState<Fiado[]>([]);
+  // Carga instantánea de memoria física del teléfono (0ms latencia: cero pantallas en blanco)
+  const [servicios, setServicios] = useState<Servicio[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const local = (storage as any).leerDeLocalStorage?.() || defaultStorage.leerDeLocalStorage?.();
+        if (local && Array.isArray(local.servicios) && local.servicios.length > 0) return local.servicios;
+      } catch (_) {}
+    }
+    return SERVICIOS_INICIALES;
+  });
+
+  const [citas, setCitas] = useState<Cita[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const local = (storage as any).leerDeLocalStorage?.() || defaultStorage.leerDeLocalStorage?.();
+        if (local && Array.isArray(local.citas)) return local.citas;
+      } catch (_) {}
+    }
+    return [];
+  });
+
+  const [fiados, setFiados] = useState<Fiado[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const local = (storage as any).leerDeLocalStorage?.() || defaultStorage.leerDeLocalStorage?.();
+        if (local && Array.isArray(local.fiados)) return local.fiados;
+      } catch (_) {}
+    }
+    return [];
+  });
 
   const [vistaActiva, setVistaActiva] = useState<VistaActiva>('hoy');
   const [fechaSeleccionada, setFechaSeleccionada] = useState<string>(getFechaHoyLocal());
@@ -75,8 +102,8 @@ export const AgendaProvider: React.FC<AgendaProviderProps> = ({
           }
           if (Array.isArray(data.fiados)) setFiados(data.fiados);
         } else if (activo && !data) {
-          // Inicializar almacenamiento con catálogo base
-          persistirDatos(citas, servicios, fiados);
+          // Si el servidor falló (ej. error 520 de Cloudflare o timeout), NO borrar citas
+          console.warn('[AgendaContext] Servidor no respondió, manteniendo datos locales protegidos.');
         }
       } catch (err) {
         console.warn('[AgendaContext] Error inicializando datos:', err);

@@ -30,6 +30,16 @@ const MIME_TYPES = {
   '.webmanifest': 'application/manifest+json',
 };
 
+// Memoria en RAM para responder en 1ms a Cloudflare y no bloquear I/O
+let inMemoryAgenda = null;
+if (fs.existsSync(DB_FILE)) {
+  try {
+    inMemoryAgenda = JSON.parse(fs.readFileSync(DB_FILE, 'utf-8'));
+  } catch (err) {
+    console.error('Error cargando base de datos inicial en memoria:', err);
+  }
+}
+
 const server = http.createServer((req, res) => {
   // Manejo de CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -53,9 +63,15 @@ const server = http.createServer((req, res) => {
 
     if (req.method === 'GET') {
       res.setHeader('Content-Type', 'application/json');
+      if (inMemoryAgenda && !inMemoryAgenda.empty) {
+        res.writeHead(200);
+        res.end(JSON.stringify(inMemoryAgenda));
+        return;
+      }
       if (fs.existsSync(DB_FILE)) {
         try {
           const content = fs.readFileSync(DB_FILE, 'utf-8');
+          inMemoryAgenda = JSON.parse(content);
           res.writeHead(200);
           res.end(content);
           return;
@@ -77,68 +93,70 @@ const server = http.createServer((req, res) => {
         try {
           const incoming = JSON.parse(body);
 
-          // Fusión atómica segura en servidor: sincroniza acceso directo y web sin sobreescribir
+          // Fusión atómica segura en memoria RAM (ultra rápida)
           let finalData = incoming;
-          if (fs.existsSync(DB_FILE)) {
-            try {
-              const existingRaw = fs.readFileSync(DB_FILE, 'utf-8');
-              const existing = JSON.parse(existingRaw);
-              if (existing && !existing.empty) {
-                // Combinar listas de eliminadas (tombstones)
-                const eliminadasSet = new Set([
-                  ...(Array.isArray(existing.citasEliminadas) ? existing.citasEliminadas : []),
-                  ...(Array.isArray(incoming.citasEliminadas) ? incoming.citasEliminadas : []),
-                ]);
+          const existing = inMemoryAgenda || (fs.existsSync(DB_FILE) ? JSON.parse(fs.readFileSync(DB_FILE, 'utf-8')) : null);
+          
+          if (existing && !existing.empty) {
+            // Combinar listas de eliminadas (tombstones)
+            const eliminadasSet = new Set([
+              ...(Array.isArray(existing.citasEliminadas) ? existing.citasEliminadas : []),
+              ...(Array.isArray(incoming.citasEliminadas) ? incoming.citasEliminadas : []),
+            ]);
 
-                // Mapa unificado de citas por ID
-                const citasMap = new Map();
-                (Array.isArray(existing.citas) ? existing.citas : []).forEach((c) => {
-                  if (c && c.id && !eliminadasSet.has(c.id)) {
-                    citasMap.set(c.id, c);
-                  }
-                });
-                (Array.isArray(incoming.citas) ? incoming.citas : []).forEach((c) => {
-                  if (c && c.id && !eliminadasSet.has(c.id)) {
-                    if (!citasMap.has(c.id)) {
-                      citasMap.set(c.id, c);
-                    } else {
-                      const prev = citasMap.get(c.id);
-                      const timePrev = prev?.creadoEn ? Date.parse(prev.creadoEn) : 0;
-                      const timeInc = c.creadoEn ? Date.parse(c.creadoEn) : 0;
-                      citasMap.set(c.id, timeInc >= timePrev ? c : prev);
-                    }
-                  }
-                });
-
-                // Mapa unificado de fiados por ID
-                const fiadosMap = new Map();
-                (Array.isArray(existing.fiados) ? existing.fiados : []).forEach((f) => {
-                  if (f && f.id) fiadosMap.set(f.id, f);
-                });
-                (Array.isArray(incoming.fiados) ? incoming.fiados : []).forEach((f) => {
-                  if (f && f.id) fiadosMap.set(f.id, f);
-                });
-
-                finalData = {
-                  version: incoming.version || existing.version || '1.0',
-                  fechaRespaldo: new Date().toISOString(),
-                  citas: Array.from(citasMap.values()),
-                  servicios:
-                    Array.isArray(incoming.servicios) && incoming.servicios.length > 0
-                      ? incoming.servicios
-                      : existing.servicios || [],
-                  fiados: Array.from(fiadosMap.values()),
-                  citasEliminadas: Array.from(eliminadasSet).slice(-500),
-                };
+            // Mapa unificado de citas por ID
+            const citasMap = new Map();
+            (Array.isArray(existing.citas) ? existing.citas : []).forEach((c) => {
+              if (c && c.id && !eliminadasSet.has(c.id)) {
+                citasMap.set(c.id, c);
               }
-            } catch (mergeErr) {
-              console.error('Error fusionando datos en servidor:', mergeErr);
-            }
+            });
+            (Array.isArray(incoming.citas) ? incoming.citas : []).forEach((c) => {
+              if (c && c.id && !eliminadasSet.has(c.id)) {
+                if (!citasMap.has(c.id)) {
+                  citasMap.set(c.id, c);
+                } else {
+                  const prev = citasMap.get(c.id);
+                  const timePrev = prev?.creadoEn ? Date.parse(prev.creadoEn) : 0;
+                  const timeInc = c.creadoEn ? Date.parse(c.creadoEn) : 0;
+                  citasMap.set(c.id, timeInc >= timePrev ? c : prev);
+                }
+              }
+            });
+
+            // Mapa unificado de fiados por ID
+            const fiadosMap = new Map();
+            (Array.isArray(existing.fiados) ? existing.fiados : []).forEach((f) => {
+              if (f && f.id) fiadosMap.set(f.id, f);
+            });
+            (Array.isArray(incoming.fiados) ? incoming.fiados : []).forEach((f) => {
+              if (f && f.id) fiadosMap.set(f.id, f);
+            });
+
+            finalData = {
+              version: incoming.version || existing.version || '1.0',
+              fechaRespaldo: new Date().toISOString(),
+              citas: Array.from(citasMap.values()),
+              servicios:
+                Array.isArray(incoming.servicios) && incoming.servicios.length > 0
+                  ? incoming.servicios
+                  : existing.servicios || [],
+              fiados: Array.from(fiadosMap.values()),
+              citasEliminadas: Array.from(eliminadasSet).slice(-500),
+            };
           }
 
-          fs.writeFileSync(DB_FILE, JSON.stringify(finalData, null, 2), 'utf-8');
+          // Actualizar memoria RAM inmediatamente
+          inMemoryAgenda = finalData;
+
+          // Responder a Cloudflare en 1 milisegundo
           res.writeHead(200, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ ok: true, timestamp: new Date().toISOString() }));
+
+          // Persistir en disco en segundo plano de forma no bloqueante
+          fs.writeFile(DB_FILE, JSON.stringify(finalData, null, 2), 'utf-8', (writeErr) => {
+            if (writeErr) console.error('Error guardando en disco:', writeErr);
+          });
         } catch (err) {
           res.writeHead(400, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Datos no válidos' }));
