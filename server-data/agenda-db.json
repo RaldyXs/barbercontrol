@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "fechaRespaldo": "2026-10-23T17:54:25.880Z",
+  "fechaRespaldo": "2026-10-23T21:38:45.961Z",
   "citas": [
     {
       "clienteNombre": "Julio Tiburcio",
@@ -10,7 +10,7 @@
       "hora": "10:00",
       "duracionMinutos": 25,
       "precioCobradoRD": 300,
-      "estado": "atendido",
+      "estado": "pendiente",
       "notas": "Cerquillo",
       "esBloqueo": false,
       "id": "cita-1792214044694",
@@ -37,7 +37,7 @@
       "hora": "01:17",
       "duracionMinutos": 30,
       "precioCobradoRD": 400,
-      "estado": "atendido",
+      "estado": "pendiente",
       "esBloqueo": false,
       "id": "cita-1792214249333",
       "creadoEn": "2026-10-17T05:17:29.333Z"
@@ -50,7 +50,7 @@
       "hora": "01:18",
       "duracionMinutos": 30,
       "precioCobradoRD": 400,
-      "estado": "atendido",
+      "estado": "pendiente",
       "esBloqueo": false,
       "id": "cita-1792214292172",
       "creadoEn": "2026-10-17T05:18:12.172Z"
@@ -63,7 +63,7 @@
       "hora": "01:18",
       "duracionMinutos": 30,
       "precioCobradoRD": 400,
-      "estado": "atendido",
+      "estado": "pendiente",
       "esBloqueo": false,
       "id": "cita-1792214314009",
       "creadoEn": "2026-10-17T05:18:34.009Z"
@@ -76,7 +76,7 @@
       "hora": "01:21",
       "duracionMinutos": 25,
       "precioCobradoRD": 300,
-      "estado": "atendido",
+      "estado": "pendiente",
       "esBloqueo": false,
       "id": "cita-1792214492466",
       "creadoEn": "2026-10-17T05:21:32.466Z"
@@ -89,7 +89,7 @@
       "hora": "01:22",
       "duracionMinutos": 30,
       "precioCobradoRD": 400,
-      "estado": "atendido",
+      "estado": "pendiente",
       "esBloqueo": false,
       "id": "cita-1792214549891",
       "creadoEn": "2026-10-17T05:22:29.891Z"
@@ -102,7 +102,7 @@
       "hora": "11:44",
       "duracionMinutos": 30,
       "precioCobradoRD": 400,
-      "estado": "atendido",
+      "estado": "pendiente",
       "esBloqueo": false,
       "id": "cita-1792251883502",
       "creadoEn": "2026-10-17T15:44:43.502Z"
@@ -115,7 +115,7 @@
       "hora": "12:33",
       "duracionMinutos": 30,
       "precioCobradoRD": 400,
-      "estado": "atendido",
+      "estado": "pendiente",
       "esBloqueo": false,
       "id": "cita-1792254815363",
       "creadoEn": "2026-10-17T16:33:35.363Z"
@@ -128,7 +128,7 @@
       "hora": "18:56",
       "duracionMinutos": 30,
       "precioCobradoRD": 400,
-      "estado": "atendido",
+      "estado": "pendiente",
       "esBloqueo": false,
       "id": "cita-1792277785726",
       "creadoEn": "2026-10-17T22:56:25.726Z"
@@ -141,7 +141,7 @@
       "hora": "23:13",
       "duracionMinutos": 20,
       "precioCobradoRD": 300,
-      "estado": "atendido",
+      "estado": "pendiente",
       "esBloqueo": false,
       "id": "cita-1792293251404",
       "creadoEn": "2026-10-18T03:14:11.404Z"
@@ -247,7 +247,7 @@
       "hora": "09:20",
       "duracionMinutos": 30,
       "precioCobradoRD": 400,
-      "estado": "atendido",
+      "estado": "pendiente",
       "esBloqueo": false,
       "id": "cita-1792502432296",
       "creadoEn": "2026-10-20T13:20:32.296Z"
@@ -260,7 +260,7 @@
       "hora": "09:20",
       "duracionMinutos": 30,
       "precioCobradoRD": 400,
-      "estado": "atendido",
+      "estado": "pendiente",
       "esBloqueo": false,
       "id": "cita-1792502443633",
       "creadoEn": "2026-10-20T13:20:43.633Z"
@@ -286,7 +286,7 @@
       "hora": "09:21",
       "duracionMinutos": 30,
       "precioCobradoRD": 400,
-      "estado": "atendido",
+      "estado": "pendiente",
       "esBloqueo": false,
       "id": "cita-1792502506590",
       "creadoEn": "2026-10-20T13:21:46.590Z"
@@ -299,7 +299,7 @@
       "hora": "18:16",
       "duracionMinutos": 20,
       "precioCobradoRD": 300,
-      "estado": "atendido",
+      "estado": "pendiente",
       "esBloqueo": false,
       "id": "cita-1792621017000",
       "creadoEn": "2026-10-21T22:16:57.000Z"
@@ -351,7 +351,7 @@
       "hora": "18:19",
       "duracionMinutos": 20,
       "precioCobradoRD": 300,
-      "estado": "atendido",
+      "estado": "pendiente",
       "esBloqueo": false,
       "id": "cita-1792621153452",
       "creadoEn": "2026-10-21T22:19:13.452Z"
@@ -390,7 +390,7 @@
       "hora": "10:08",
       "duracionMinutos": 20,
       "precioCobradoRD": 300,
-      "estado": "atendido",
+      "estado": "pendiente",
       "esBloqueo": false,
       "id": "cita-1792678106413",
       "creadoEn": "2026-10-22T14:08:26.413Z"
@@ -481,7 +481,7 @@
       "hora": "14:30",
       "duracionMinutos": 20,
       "precioCobradoRD": 300,
-      "estado": "atendido",
+      "estado": "pendiente",
       "esBloqueo": false,
       "id": "cita-1792693823273",
       "creadoEn": "2026-10-22T18:30:23.274Z"
@@ -507,7 +507,7 @@
       "hora": "08:45",
       "duracionMinutos": 30,
       "precioCobradoRD": 400,
-      "estado": "en_atencion",
+      "estado": "pendiente",
       "esBloqueo": false,
       "id": "cita-1792759533668",
       "creadoEn": "2026-10-23T12:45:33.668Z"
@@ -650,7 +650,7 @@
       "hora": "10:01",
       "duracionMinutos": 30,
       "precioCobradoRD": 400,
-      "estado": "atendido",
+      "estado": "pendiente",
       "esBloqueo": false,
       "id": "cita-1792764065818",
       "creadoEn": "2026-10-23T14:01:05.818Z"
